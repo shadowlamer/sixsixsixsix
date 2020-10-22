@@ -4,7 +4,7 @@
 typedef struct {
     unsigned char x;
     unsigned char y;
-    char t;
+    int t;
 } track_element_t;
 
 #define TRACK_SIZE 199

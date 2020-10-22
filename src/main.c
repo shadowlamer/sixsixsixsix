@@ -1,5 +1,6 @@
 #include <string.h>
 
+#include "globals.h"
 #include "dashboard.h"
 #include "track.h"
 
@@ -11,23 +12,6 @@ __at (SCREEN_BUFFER_START) char screen_buff[];
 __at (ROAD_SCREEN_BUFFER_START) char screen_road_buf[];
 __at (DASH_SCREEN_BUFFER_START) char screen_dash_buf[];
 __sfr __at 0xfe joystickKeysPort;
-
-enum {
-  G_BUF,
-  G_BG_SHIFT,
-  G_TRACK_POS,
-  G_TURN,
-  G_SPEED,
-  NUM_GLOBALS
-};
-
-#define A_BUF          0
-#define A_BG_SHIFT     2
-#define A_TRACK_POS    4
-#define A_TURN         6
-#define A_SPEED        8
-
-static int globals[NUM_GLOBALS];
 
 #define ROAD_MARKS_NUM 2
 
@@ -42,66 +26,70 @@ const road_marks_t road_marks[ROAD_MARKS_NUM] = {
     {.angle = 0, .width = 0, .solid = 0}
 };
 
-int shifts[64];
-const int turns[19] = {32, 45, 64, 90, 128, 181, 256, 362, 512, 0, -512, -362, -256, -181, -128, -90, -64, -45, -32};
-unsigned char double_buf[0x800];
-int squares[64];
+static int shifts[64];
+static unsigned char double_buf[0x800];
+static int squares[64];
 
-unsigned int track_position;
+static unsigned char scanline;
 
 void render_road();
 void mark(int pos, unsigned char line, unsigned char *pp);
-void calc_shifts(int factor);
+void calc_shifts();
 void render_background();
 void render_dashboard();
 void render_map();
 void render_pos(unsigned int pos);
 void plot(unsigned char x, unsigned char y);
-void init();
 
 int main() {
-  int turn;
+  unsigned char i;
 
-  init();
+  globals[G_TRACK_POS] = 0;
+  globals[G_SPEED] = 0;
+  globals[G_SPEED] = 0;
+  globals[G_MY_ANGLE] = 0;
+  globals[G_MISPOS] = 0;
+
+  for (i=0;i<64;i++) squares[i] = i*i;
   render_dashboard();
 
   while (1) {
-    globals[G_SPEED] = 1;
-    turn = track[(track_position / 64) + AHEAD].t;
-    render_pos((track_position / 64));
-    calc_shifts(turns[turn + 9]);
-    globals[G_TURN] = turn;
+    scanline = joystickKeysPort & 0x0f ^ 0x0f;
+    if (scanline & 0b00000100) globals[G_SPEED]++;
+    if (scanline & 0b00001000) globals[G_SPEED]--;
+    if (scanline & 0b00000010) globals[G_MY_ANGLE]--;
+    if (scanline & 0b00000001) globals[G_MY_ANGLE]++;
+    if (globals[G_SPEED] > 8) globals[G_SPEED] = 8;
+    if (globals[G_SPEED] < 0) globals[G_SPEED] = 0;
+
+
+    globals[G_TRACK_POS] += globals[G_SPEED];
+    globals[G_COARSE_POS] = globals[G_TRACK_POS] >> 6;
+    if (globals[G_COARSE_POS] >= TRACK_SIZE) globals[G_TRACK_POS] = 0;
+    globals[G_MISANGLE] = globals[G_MY_ANGLE] - globals[G_TURN];
+    globals[G_MISPOS] += ((globals[G_SPEED] * globals[G_MISANGLE]) >> 2);
+    globals[G_TURN] = track[globals[G_COARSE_POS] + AHEAD].t;
+
+    render_pos(globals[G_COARSE_POS]);
+    calc_shifts();
     render_background();
     render_road();
-    render_pos(track_position / 64);
-
-    track_position += globals[G_SPEED];
-    if ((track_position / 64) >= TRACK_SIZE) {
-      track_position = 0;
-    }
-
+    render_pos(globals[G_COARSE_POS]);
   }
   return 0;
 }
 
-void init() {
-  unsigned char i;
-  track_position = 0;
-  for (i=0;i<64;i++) squares[i] = i*i;
-}
-
-void calc_shifts(int factor) {
+void calc_shifts() {
   char i;
+  int factor = turns[globals[G_TURN] + CENTER_TURN];
   for (i=0; i<64; i++) {
-    shifts[63 - i] = squares[i] / factor;
+    shifts[63 - i] = 127 + globals[G_MISPOS] + squares[i] / factor;
   }
 }
 
 void mark(int pos, unsigned char line, unsigned char *pp) {
   unsigned char fill_buf;
   unsigned int x;
-  pos += 127;
-  if (pos < 0x00) return;
   x = pos + shifts[line];
   if (x > 0xff) return;
   fill_buf = 0x80 >> (x & 0x07);
@@ -117,7 +105,7 @@ void render_road() {
   for (line = 0; line < 64; line++) {
     p = double_buf + ((line & 0x07) << 8) + ((line & 0x38) << 2);
     for (m = 0; m < ROAD_MARKS_NUM; m++) {
-      if (road_marks[m].solid || (((line / 8) & 0x03) == ((track_position / 8) & 0x03))) {
+      if (road_marks[m].solid || (((line >> 3) & 0x03) == ((globals[G_TRACK_POS] >> 3) & 0x03))) {
         w = line * road_marks[m].angle;
         mark(+road_marks[m].width + w, line, p);
         if (road_marks[m].width == 0) break;
@@ -137,13 +125,8 @@ void render_background(){
   __asm
   ld iy, #_globals
 
-  ld e, A_TURN(iy)
-  xor a
-  bit 7, e                       ; Expand signed char to int
-  jr z, expand_char
-  cpl
-expand_char:
-  ld d, a
+  ld e, A_TURN+0(iy)
+  ld d, A_TURN+1(iy)
   ld a, A_SPEED(iy)
   call #_mult12                  ; Multiply speed by turn angle
   ld e, A_BG_SHIFT+0(iy)
