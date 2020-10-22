@@ -12,6 +12,23 @@ __at (ROAD_SCREEN_BUFFER_START) char screen_road_buf[];
 __at (DASH_SCREEN_BUFFER_START) char screen_dash_buf[];
 __sfr __at 0xfe joystickKeysPort;
 
+enum {
+  G_BUF,
+  G_BG_SHIFT,
+  G_TRACK_POS,
+  G_TURN,
+  G_SPEED,
+  NUM_GLOBALS
+};
+
+#define A_BUF          0
+#define A_BG_SHIFT     2
+#define A_TRACK_POS    4
+#define A_TURN         6
+#define A_SPEED        8
+
+static int globals[NUM_GLOBALS];
+
 #define ROAD_MARKS_NUM 2
 
 typedef struct {
@@ -32,12 +49,10 @@ int squares[64];
 
 unsigned int track_position;
 
-unsigned int bg_shift = 0;
-
 void render_road();
 void mark(int pos, unsigned char line, unsigned char *pp);
 void calc_shifts(int factor);
-void render_background(unsigned char shift);
+void render_background();
 void render_dashboard();
 void render_map();
 void render_pos(unsigned int pos);
@@ -51,16 +66,17 @@ int main() {
   render_dashboard();
 
   while (1) {
-    turn = track[(track_position / 8) + AHEAD].t;
-    render_pos((track_position / 8));
+    globals[G_SPEED] = 1;
+    turn = track[(track_position / 64) + AHEAD].t;
+    render_pos((track_position / 64));
     calc_shifts(turns[turn + 9]);
-    bg_shift += turn;
-    render_background(bg_shift >> 3);
+    globals[G_TURN] = turn;
+    render_background();
     render_road();
-    render_pos(track_position / 8);
+    render_pos(track_position / 64);
 
-    track_position ++;
-    if (track_position >= TRACK_SIZE) {
+    track_position += globals[G_SPEED];
+    if ((track_position / 64) >= TRACK_SIZE) {
       track_position = 0;
     }
 
@@ -101,7 +117,7 @@ void render_road() {
   for (line = 0; line < 64; line++) {
     p = double_buf + ((line & 0x07) << 8) + ((line & 0x38) << 2);
     for (m = 0; m < ROAD_MARKS_NUM; m++) {
-      if (road_marks[m].solid || (((line / 8) & 0x03) == (track_position & 0x03))) {
+      if (road_marks[m].solid || (((line / 8) & 0x03) == ((track_position / 8) & 0x03))) {
         w = line * road_marks[m].angle;
         mark(+road_marks[m].width + w, line, p);
         if (road_marks[m].width == 0) break;
@@ -117,22 +133,48 @@ void render_dashboard() {
   render_map();
 }
 
-void render_background(unsigned char shift){
+void render_background(){
   __asm
-  ld iy,#2
-  add iy,sp                      ; Bypass the return address of the function
+  ld iy, #_globals
 
-  ld de, #_screen_buff           ; Load screen buffer address
-  ld hl, #_bin2c_dashboard_scr   ; Load background start address
+  ld e, A_TURN(iy)
+  xor a
+  bit 7, e                       ; Expand signed char to int
+  jr z, expand_char
+  cpl
+expand_char:
+  ld d, a
+  ld a, A_SPEED(iy)
+  call #_mult12                  ; Multiply speed by turn angle
+  ld e, A_BG_SHIFT+0(iy)
+  ld d, A_BG_SHIFT+1(iy)
+  add hl, de                     ; Increase global background shift
+  ld A_BG_SHIFT+0(iy), l
+  ld A_BG_SHIFT+1(iy), h         ; And put it back
 
-  ld a, 0(iy)
-  neg
-  and #0x1f
-  ld 0(iy), a                    ; Limit shift and put it back
+  rr h                           ; Calc image shift
+  rr l
+  rr h
+  rr l
+  rr h
+  rr l
+  rr h
+  rr l
+  rr l
+  rr l
+  rr l
+
+  xor a
+  sub l                          ; Invert direction
+  and #0x1f                      ; Limit image shift to screen width
+
+  ld A_BUF(iy), a                ; Store image shift in a buffer
 
   ld c, a
   ld b, #0
-  add hl, bc                     ;
+  ld de, #_screen_buff           ; Load screen buffer address
+  ld hl, #_bin2c_dashboard_scr   ; Load background start address
+  add hl, bc                     ; Shift image
 
   ld b, #0x40                    ; Load lines number
 render_background_loop:          ; Loop by lines
@@ -141,7 +183,7 @@ render_background_loop:          ; Loop by lines
 
   ld b, #0
   ld a, #0x20
-  sbc a, 0(iy)                   ; Calc number of bytes in first part
+  sbc a, A_BUF(iy)               ; Calc number of bytes in first part
   jp z, skip_ldir_1              ; Do not copy zero bytes
   ld c, a
   ldir                           ; Copy first part
@@ -151,13 +193,13 @@ skip_ldir_1:
   sbc hl, bc
   ld b, #0
   xor a
-  add a, 0(iy)                   ; Calc number of bytes in second part
+  add a, A_BUF(iy)          ; Calc number of bytes in second part
   jp z, skip_ldir_2              ; Do not copy zero bytes
   ld c, a
   ldir                           ; Copy second part
 skip_ldir_2:
 
-  ld bc, #0x0020                 ; Rewind image to next line
+  ld bc, #0x0020                 ; Shift image to next line
   add hl, bc
 
   pop bc                         ; Restore lines loop counter
@@ -191,4 +233,19 @@ void render_pos(unsigned int pos) {
 void render_map() {
   unsigned char i;
   for (i=0;i<TRACK_SIZE;i++) render_pos(i);
+}
+
+void mult12() {
+  __asm
+  ld hl,#0                        ; HL is used to accumulate the result
+  ld b,#8                         ; the multiplier (A) is 8 bits wide
+Mul8Loop:
+  rrca                           ; putting the next bit into the carry
+  jp nc,Mul8Skip                 ; if zero, we skip the addition (jp is used for speed)
+  add hl,de                      ; adding to the product if necessary
+Mul8Skip:
+  sla e                          ; calculating the next auxiliary product by shifting
+  rl d                           ; DE one bit leftwards (refer to the shift instructions!)
+  djnz Mul8Loop
+  __endasm;
 }
