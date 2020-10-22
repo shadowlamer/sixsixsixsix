@@ -5,6 +5,8 @@
 #ifndef YRGB2020_GLOBALS_H
 #define YRGB2020_GLOBALS_H
 
+#define MAX_SPEED 16
+
 enum {
     G_BUF,
     G_BG_SHIFT,
@@ -12,9 +14,11 @@ enum {
     G_COARSE_POS,
     G_TURN,
     G_SPEED,
+    G_ROAD_ANGLE,
     G_MY_ANGLE,
     G_MISANGLE,
     G_MISPOS,
+    G_OLD_BG_SHIFT,
     NUM_GLOBALS
 };
 
@@ -24,9 +28,11 @@ enum {
 #define A_COARSE_POS   6
 #define A_TURN         8
 #define A_SPEED        10
-#define A_MY_ANGLE     12
-#define A_MISANGLE     14
-#define A_MISPOS       16
+#define A_ROAD_ANGLE   12
+#define A_MY_ANGLE     14
+#define A_MISANGLE     16
+#define A_MISPOS       18
+#define A_OLD_BG_SHIFT 20
 
 #define NUM_TURNS 19
 #define CENTER_TURN 9

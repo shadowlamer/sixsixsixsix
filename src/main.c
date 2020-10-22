@@ -2,6 +2,7 @@
 
 #include "globals.h"
 #include "dashboard.h"
+#include "background1.h"
 #include "track.h"
 
 #define SCREEN_BUFFER_START 0x4000
@@ -45,10 +46,13 @@ int main() {
   unsigned char i;
 
   globals[G_TRACK_POS] = 0;
+  globals[G_COARSE_POS] = 0;
   globals[G_SPEED] = 0;
   globals[G_SPEED] = 0;
-  globals[G_MY_ANGLE] = 0;
+  globals[G_ROAD_ANGLE] = track[globals[G_COARSE_POS]].t;
+  globals[G_MY_ANGLE] = globals[G_ROAD_ANGLE];
   globals[G_MISPOS] = 0;
+  globals[G_OLD_BG_SHIFT] = 0xff;
 
   for (i=0;i<64;i++) squares[i] = i*i;
   render_dashboard();
@@ -59,22 +63,22 @@ int main() {
     if (scanline & 0b00001000) globals[G_SPEED]--;
     if (scanline & 0b00000010) globals[G_MY_ANGLE]--;
     if (scanline & 0b00000001) globals[G_MY_ANGLE]++;
-    if (globals[G_SPEED] > 8) globals[G_SPEED] = 8;
+    if (globals[G_SPEED] > MAX_SPEED) globals[G_SPEED] = MAX_SPEED;
     if (globals[G_SPEED] < 0) globals[G_SPEED] = 0;
-
 
     globals[G_TRACK_POS] += globals[G_SPEED];
     globals[G_COARSE_POS] = globals[G_TRACK_POS] >> 6;
     if (globals[G_COARSE_POS] >= TRACK_SIZE) globals[G_TRACK_POS] = 0;
-    globals[G_MISANGLE] = globals[G_MY_ANGLE] - globals[G_TURN];
-    globals[G_MISPOS] += ((globals[G_SPEED] * globals[G_MISANGLE]) >> 2);
     globals[G_TURN] = track[globals[G_COARSE_POS] + AHEAD].t;
+    globals[G_ROAD_ANGLE] = track[globals[G_COARSE_POS]].t;
+    globals[G_MISANGLE] = globals[G_MY_ANGLE] - globals[G_ROAD_ANGLE];
+    globals[G_MISPOS] += ((globals[G_SPEED] * globals[G_MISANGLE]) >> 2);
 
-    render_pos(globals[G_COARSE_POS]);
+//    render_pos(globals[G_COARSE_POS]);
     calc_shifts();
     render_background();
     render_road();
-    render_pos(globals[G_COARSE_POS]);
+//    render_pos(globals[G_COARSE_POS]);
   }
   return 0;
 }
@@ -92,7 +96,7 @@ void mark(int pos, unsigned char line, unsigned char *pp) {
   unsigned int x;
   x = pos + shifts[line];
   if (x > 0xff) return;
-  fill_buf = 0x80 >> (x & 0x07);
+  fill_buf = 0xc0 >> (x & 0x07);
   pp[x / 8] |= fill_buf;
 }
 
@@ -117,16 +121,16 @@ void render_road() {
 }
 
 void render_dashboard() {
-  memcpy(screen_dash_buf, bin2c_dashboard_scr + 0x1000, 0x800);
-  render_map();
+  memcpy(screen_dash_buf, bin2c_dashboard_bin, 0x800);
+//  render_map();
 }
 
 void render_background(){
   __asm
   ld iy, #_globals
 
-  ld e, A_TURN+0(iy)
-  ld d, A_TURN+1(iy)
+  ld e, A_MY_ANGLE+0(iy)
+  ld d, A_MY_ANGLE+1(iy)
   ld a, A_SPEED(iy)
   call #_mult12                  ; Multiply speed by turn angle
   ld e, A_BG_SHIFT+0(iy)
@@ -151,12 +155,15 @@ void render_background(){
   sub l                          ; Invert direction
   and #0x1f                      ; Limit image shift to screen width
 
-  ld A_BUF(iy), a                ; Store image shift in a buffer
+  cp A_OLD_BG_SHIFT(iy)
+  jr z, render_background_end     ; Background not changed
+
+  ld A_OLD_BG_SHIFT(iy), a       ; Store image shift in a buffer
 
   ld c, a
   ld b, #0
   ld de, #_screen_buff           ; Load screen buffer address
-  ld hl, #_bin2c_dashboard_scr   ; Load background start address
+  ld hl, #_bin2c_background1_bin   ; Load background start address
   add hl, bc                     ; Shift image
 
   ld b, #0x40                    ; Load lines number
@@ -166,7 +173,7 @@ render_background_loop:          ; Loop by lines
 
   ld b, #0
   ld a, #0x20
-  sbc a, A_BUF(iy)               ; Calc number of bytes in first part
+  sbc a, A_OLD_BG_SHIFT(iy)               ; Calc number of bytes in first part
   jp z, skip_ldir_1              ; Do not copy zero bytes
   ld c, a
   ldir                           ; Copy first part
@@ -176,7 +183,7 @@ skip_ldir_1:
   sbc hl, bc
   ld b, #0
   xor a
-  add a, A_BUF(iy)          ; Calc number of bytes in second part
+  add a, A_OLD_BG_SHIFT(iy)          ; Calc number of bytes in second part
   jp z, skip_ldir_2              ; Do not copy zero bytes
   ld c, a
   ldir                           ; Copy second part
@@ -187,6 +194,7 @@ skip_ldir_2:
 
   pop bc                         ; Restore lines loop counter
   djnz render_background_loop
+render_background_end:
   __endasm;
 }
 
@@ -210,7 +218,7 @@ plot_loop:
 void render_pos(unsigned int pos) {
   unsigned char x = track[pos].x;
   unsigned char y = track[pos].y;
-  plot(168 + x, 0 + y);
+  plot(80 + x, 0 + y);
 }
 
 void render_map() {
@@ -218,7 +226,7 @@ void render_map() {
   for (i=0;i<TRACK_SIZE;i++) render_pos(i);
 }
 
-void mult12() {
+void mult12() __naked {
   __asm
   ld hl,#0                        ; HL is used to accumulate the result
   ld b,#8                         ; the multiplier (A) is 8 bits wide
@@ -230,5 +238,6 @@ Mul8Skip:
   sla e                          ; calculating the next auxiliary product by shifting
   rl d                           ; DE one bit leftwards (refer to the shift instructions!)
   djnz Mul8Loop
+  ret
   __endasm;
 }
