@@ -8,6 +8,13 @@
 #define MAX_SPEED 12
 
 enum {
+    ST_IDLE = 0,
+    ST_RACE,
+    ST_CRASH,
+    NUM_STATES
+};
+
+enum {
     G_BUF,
     G_BG_SHIFT,
     G_TRACK_POS,
@@ -23,6 +30,8 @@ enum {
     G_SPRITE_Y,
     G_SPRITE_ADDR,
     G_SPRITE_POS,
+    G_SEED,
+    G_STATE,
     NUM_GLOBALS
 };
 
@@ -41,6 +50,8 @@ enum {
 #define A_SPRITE_Y     24
 #define A_SPRITE_ADDR  26
 #define A_SPRITE_POS   28
+#define A_SEED         30
+#define A_STATE        32
 
 #define NUM_TURNS 19
 #define CENTER_TURN 9

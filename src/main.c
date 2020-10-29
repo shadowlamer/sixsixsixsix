@@ -6,12 +6,13 @@
 #include "background2.h"
 #include "track.h"
 #include "sprites.h"
+#include "crash.h"
 
 #define SCREEN_BUFFER_START 0x4000
 #define ROAD_SCREEN_BUFFER_START 0x4800
 #define DASH_SCREEN_BUFFER_START 0x5000
 
-__at (SCREEN_BUFFER_START) char screen_buff[0x1800];
+__at (SCREEN_BUFFER_START) char screen_buf[0x1800];
 __at (ROAD_SCREEN_BUFFER_START) char screen_road_buf[0x800];
 __at (DASH_SCREEN_BUFFER_START) char screen_dash_buf[0x800];
 __sfr __at 0xfe joystickKeysPort;
@@ -19,9 +20,9 @@ __sfr __at 0xfe joystickKeysPort;
 #define ROAD_MARKS_NUM 2
 
 typedef struct {
-  unsigned char angle;
-  unsigned char width;
-  unsigned char solid;
+    unsigned char angle;
+    unsigned char width;
+    unsigned char solid;
 } road_marks_t;
 
 const road_marks_t road_marks[ROAD_MARKS_NUM] = {
@@ -44,6 +45,7 @@ void render_map();
 void render_pos(unsigned int pos);
 void plot(unsigned char x, unsigned char y);
 void render_sprite();
+unsigned int random();
 
 int main() {
   unsigned char i;
@@ -57,53 +59,68 @@ int main() {
   globals[G_MISPOS] = 0;
   globals[G_OLD_BG_SHIFT] = 0xff;
   globals[G_SPRITE_POS] = 0;
+  globals[G_STATE] = ST_RACE;
+  globals[G_SPRITE_Y] = 0;
 
   for (i=0;i<64;i++) squares[i] = i*i;
   render_dashboard();
 
   while (1) {
-    scanline = joystickKeysPort & 0x0f ^ 0x0f;
-    if (scanline & 0b00000100) globals[G_SPEED]++;
-    if (scanline & 0b00001000) globals[G_SPEED]--;
-    if (scanline & 0b00000010) globals[G_MY_ANGLE]--;
-    if (scanline & 0b00000001) globals[G_MY_ANGLE]++;
-    if (globals[G_SPEED] > MAX_SPEED) globals[G_SPEED] = MAX_SPEED;
-    if (globals[G_SPEED] < 0) globals[G_SPEED] = 0;
 
-    globals[G_TRACK_POS] += globals[G_SPEED];
-    globals[G_COARSE_POS] = globals[G_TRACK_POS] >> 6;
-    if (globals[G_COARSE_POS] >= TRACK_SIZE) globals[G_TRACK_POS] = 0;
-    globals[G_TURN] = track[globals[G_COARSE_POS] + AHEAD].t;
-    globals[G_ROAD_ANGLE] = track[globals[G_COARSE_POS]].t;
-    globals[G_MISANGLE] = globals[G_MY_ANGLE] - globals[G_ROAD_ANGLE];
-    globals[G_MISPOS] += ((globals[G_SPEED] * globals[G_MISANGLE]) >> 2);
+    switch(globals[G_STATE]) {
+      case ST_RACE:
+        scanline = joystickKeysPort & 0x0f ^ 0x0f;
+        if (scanline & 0b00000100) globals[G_SPEED]++;
+        if (scanline & 0b00001000) globals[G_SPEED]--;
+        if (scanline & 0b00000010) globals[G_MY_ANGLE]--;
+        if (scanline & 0b00000001) globals[G_MY_ANGLE]++;
+        if (globals[G_SPEED] > MAX_SPEED) globals[G_SPEED] = MAX_SPEED;
+        if (globals[G_SPEED] < 0) globals[G_SPEED] = 0;
 
+        globals[G_TRACK_POS] += globals[G_SPEED];
+        globals[G_COARSE_POS] = globals[G_TRACK_POS] >> 6;
+        if (globals[G_COARSE_POS] >= TRACK_SIZE) globals[G_TRACK_POS] = 0;
+        globals[G_TURN] = track[globals[G_COARSE_POS] + AHEAD].t;
+        globals[G_ROAD_ANGLE] = track[globals[G_COARSE_POS]].t;
+        globals[G_MISANGLE] = globals[G_MY_ANGLE] - globals[G_ROAD_ANGLE];
+        globals[G_MISPOS] += ((globals[G_SPEED] * globals[G_MISANGLE]) >> 2);
 
 //    render_pos(globals[G_COARSE_POS]);
-    calc_shifts();
+        calc_shifts();
 
-    globals[G_SPRITE_Y] = globals[G_TRACK_POS] & 0x3f;
-    if (globals[G_SPRITE_Y] == 0) {
-      globals[G_SPRITE_POS]++;
-    }
-    switch (globals[G_SPRITE_POS]) {
-      case 0:
-        globals[G_SPRITE_X] = shifts[globals[G_SPRITE_Y]] - globals[G_SPRITE_Y] - 10;
-        break;
-      case 1:
-        globals[G_SPRITE_X] = shifts[globals[G_SPRITE_Y]];
-        break;
-      case 2:
-        globals[G_SPRITE_X] = shifts[globals[G_SPRITE_Y]] + globals[G_SPRITE_Y] + 10;
-        break;
-      default:
-        globals[G_SPRITE_POS] = 0;
-    }
-    globals[G_SPRITE_ADDR] = (unsigned int) (&sprites[(globals[G_TRACK_POS] >> 3) & 0x07]);
+        globals[G_SPRITE_Y] += globals[G_SPEED];
 
-    render_background();
-    render_road();
+        globals[G_SPRITE_ADDR] = (unsigned int) (&sprites[(globals[G_SPRITE_Y] >> 3) & 0x07]);
+        if (globals[G_SPRITE_Y] < 64) {
+          switch (globals[G_SPRITE_POS]) {
+            case 0:
+              globals[G_SPRITE_X] = shifts[globals[G_SPRITE_Y]] - globals[G_SPRITE_Y] - 10;
+              break;
+            case 1:
+              globals[G_SPRITE_X] = shifts[globals[G_SPRITE_Y]];
+              break;
+            case 2:
+              globals[G_SPRITE_X] = shifts[globals[G_SPRITE_Y]] + globals[G_SPRITE_Y] + 10;
+              break;
+          }
+        } else {
+          if (globals[G_SPRITE_X] > (127 - 20) && globals[G_SPRITE_X] < (127 + 20))  {
+            globals[G_MY_ANGLE] += globals[G_TURN] << 2;
+          }
+          globals[G_SPRITE_Y] = 0;
+          globals[G_SPRITE_POS] = random() % 3;
+        }
+        render_background();
+        render_road();
 //    render_pos(globals[G_COARSE_POS]);
+
+        if (globals[G_MISPOS] > 150 || globals[G_MISPOS] < -150) {
+          globals[G_STATE] = ST_CRASH;
+          memcpy(screen_buf, bin2c_crash_bin, 0x1800);
+        }
+
+        break;
+    }
   }
   return 0;
 }
@@ -189,12 +206,12 @@ void render_background(){
 
   ld c, a
   ld b, #0
-  ld de, #_screen_buff           ; Load screen buffer address
+  ld de, #_screen_buf           ; Load screen buffer address
   ld hl, #_bin2c_background1_bin   ; Load background start address
   add hl, bc                     ; Shift image
 
   ld b, #0x40                    ; Load lines number
-render_background_loop:          ; Loop by lines
+  render_background_loop:          ; Loop by lines
 
   push bc                        ; Store lines loop counter
 
@@ -204,7 +221,7 @@ render_background_loop:          ; Loop by lines
   jp z, skip_ldir_1              ; Do not copy zero bytes
   ld c, a
   ldir                           ; Copy first part
-skip_ldir_1:
+  skip_ldir_1:
 
   ld bc, #0x0020
   sbc hl, bc
@@ -214,14 +231,14 @@ skip_ldir_1:
   jp z, skip_ldir_2              ; Do not copy zero bytes
   ld c, a
   ldir                           ; Copy second part
-skip_ldir_2:
+  skip_ldir_2:
 
   ld bc, #0x0020                 ; Shift image to next line
   add hl, bc
 
   pop bc                         ; Restore lines loop counter
   djnz render_background_loop
-render_background_end:
+  render_background_end:
   __endasm;
 }
 
@@ -234,11 +251,11 @@ void plot(unsigned char x, unsigned char y) {
   call #0x22aa                   ; Pixel addr subroutine
   ld b, a
   ld a, #0x80
-plot_loop:
+  plot_loop:
   rrca                           ; Move pixel to the right position in byte
   djnz plot_loop
   xor a, (hl)
-  ld (hl), a                     ; Draw pixel
+      ld (hl), a                     ; Draw pixel
   __endasm;
 }
 
@@ -263,7 +280,7 @@ void render_sprite() {
   ld hl, #_sprite_buf           ; Copy from sprite to buffer
 
   ld c, #16
-copy_sprite_loop:               ; Loop by lines of sprite
+  copy_sprite_loop:               ; Loop by lines of sprite
 
   inc hl                        ; HL to second byte of buffer
 
@@ -274,15 +291,15 @@ copy_sprite_loop:               ; Loop by lines of sprite
   and #0x07                     ; Extract shift part of X pos
   jr nz, ll1
   ld a, (de)
-  jr skip_l1
-ll1:
+      jr skip_l1
+  ll1:
   ld b, a                       ; Init shift loop
   ld a, (de)                    ; Load first byte of sprite line
-l1:
+  l1:
   srl a
   rr (hl)
   djnz l1                       ; Shift first byte of sprite line to second byte of buffer line
-skip_l1:
+  skip_l1:
   dec hl                        ; Rewind HL to first byte of buffer line
   ld (hl), a                    ; Remain of first byte to first byte of buffer
   inc hl                        ; HL to second byte of buffer line
@@ -298,14 +315,14 @@ skip_l1:
   jr nz, ll2
   ld a, (de)
   jr skip_l2
-ll2:
+  ll2:
   ld b, a                       ; Init shift loop
   ld a, (de)                    ; Load second byte of sprite line
-l2:
+  l2:
   srl a
   rr (hl)
   djnz l2                      ; Shift second byte of sprite line to third byte of buffer line
-skip_l2:
+  skip_l2:
   dec hl                       ; Rewind HL to first byte of buffer line
   or (hl)                      ; Combine remain of second byte with part of first byte in buffer
   ld (hl), a                   ; Put result back to buffer
@@ -364,7 +381,7 @@ skip_l2:
   ld a, (de)
   or (hl)
   ld (hl), a
-skip1:
+  skip1:
   inc hl
   inc de
 
@@ -377,7 +394,7 @@ skip1:
   ld a, (de)
   or (hl)
   ld (hl), a
-skip2:
+  skip2:
   inc hl
   inc de
 
@@ -390,12 +407,28 @@ skip2:
   ld a, (de)
   or (hl)
   ld (hl), a
-skip3:
+  skip3:
   inc de
 
   inc c
   djnz render_sprite_inner_loop
-sprite_end:
+  sprite_end:
   pop af
+  __endasm;
+}
+
+unsigned int random() {
+  __asm
+  ld iy, #_globals
+  ld l,A_SEED+0(iy)
+  ld h,A_SEED+1(iy)
+  ld a,r
+  ld d,a
+  ld e,(hl)
+      add hl,de
+  add a,l
+  xor h
+  ld A_SEED+0(iy),l
+  ld A_SEED+1(iy),h
   __endasm;
 }
