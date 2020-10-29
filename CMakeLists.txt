@@ -6,7 +6,7 @@ set(TARGET yrgb2020)
 set(TARGET_VERSION "0.0.1")
 
 set(MAIN_CODE_LOC 32768)
-set(DATA_LOC 51440)
+set(DATA_LOC 61440)
 
 project(${TARGET})
 
