@@ -59,4 +59,23 @@ static const int turns[NUM_TURNS] = {32, 45, 64, 90, 128, 181, 256, 362, 512, 0,
 
 static int globals[NUM_GLOBALS];
 
+// ROM routines
+#define ROM_OPEN_CHANNEL 0x1601             ; Open a channel
+#define ROM_CLS          0x0DAF
+
+// Control chars
+#define INK     "\x10"
+#define PAPER   "\x11"
+#define OVER    "\x15"
+#define AT      "\x16"
+#define START   "\x01\x01"
+#define BLACK   "\x00"
+#define BLUE    "\x01"
+#define RED     "\x02"
+#define MAGENTA "\x03"
+#define GREEN   "\x04"
+#define CYAN    "\x05"
+#define YELLOW  "\x06"
+#define WHITE   "\x07"
+
 #endif //YRGB2020_GLOBALS_H

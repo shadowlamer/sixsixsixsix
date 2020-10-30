@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 
 #include "globals.h"
@@ -7,6 +8,8 @@
 #include "track.h"
 #include "sprites.h"
 #include "crash.h"
+#include "messages.h"
+#include "font1.h"
 
 #define SCREEN_BUFFER_START 0x4000
 #define ROAD_SCREEN_BUFFER_START 0x4800
@@ -15,6 +18,7 @@
 __at (SCREEN_BUFFER_START) char screen_buf[0x1800];
 __at (ROAD_SCREEN_BUFFER_START) char screen_road_buf[0x800];
 __at (DASH_SCREEN_BUFFER_START) char screen_dash_buf[0x800];
+__at (0x5c36) unsigned int *font_pointer;
 __sfr __at 0xfe joystickKeysPort;
 
 #define ROAD_MARKS_NUM 2
@@ -46,6 +50,7 @@ void render_pos(unsigned int pos);
 void plot(unsigned char x, unsigned char y);
 void render_sprite();
 unsigned int random();
+void cls();
 
 int main() {
   unsigned char i;
@@ -59,15 +64,21 @@ int main() {
   globals[G_MISPOS] = 0;
   globals[G_OLD_BG_SHIFT] = 0xff;
   globals[G_SPRITE_POS] = 0;
-  globals[G_STATE] = ST_RACE;
+  globals[G_STATE] = ST_IDLE;
   globals[G_SPRITE_Y] = 0;
 
   for (i=0;i<64;i++) squares[i] = i*i;
-  render_dashboard();
+
+//  render_dashboard();
+
+  cls();
+  printf(msg_intro1);
 
   while (1) {
 
     switch(globals[G_STATE]) {
+      case ST_IDLE:
+        break;
       case ST_RACE:
         scanline = joystickKeysPort & 0x0f ^ 0x0f;
         if (scanline & 0b00000100) globals[G_SPEED]++;
@@ -430,5 +441,31 @@ unsigned int random() {
   xor h
   ld A_SEED+0(iy),l
   ld A_SEED+1(iy),h
+  __endasm;
+}
+
+void print(int c) {
+  __asm
+  ld iy, #2
+  add iy, sp
+  ld a, 0(iy)
+  rst #0x10
+  __endasm;
+}
+
+int putchar(int c) {
+  if (c >= 0xc0) {
+    c -= 0x80;
+    font_pointer = (font1 - 0x200);
+  } else {
+    font_pointer = 0x3c00;
+  }
+  print(c);
+  return c;
+}
+
+void cls() {
+  __asm
+  call #ROM_CLS
   __endasm;
 }
