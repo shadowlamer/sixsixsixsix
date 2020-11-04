@@ -1,24 +1,27 @@
-#include <stdio.h>
 #include <string.h>
 
 #include "globals.h"
 #include "dashboard.h"
 #include "background1.h"
-#include "background2.h"
+//#include "background2.h"
 #include "track.h"
 #include "sprites.h"
 #include "crash.h"
 #include "messages.h"
 #include "font1.h"
+#include "missions.h"
 
 #define SCREEN_BUFFER_START 0x4000
+#define ATTR_SCREEN_BUFFER_START 0x5800
 #define ROAD_SCREEN_BUFFER_START 0x4800
 #define DASH_SCREEN_BUFFER_START 0x5000
+#define DOUBLE_BUFFER_START 0x6000
 
 __at (SCREEN_BUFFER_START) char screen_buf[0x1800];
+__at (ATTR_SCREEN_BUFFER_START) char screen_attr_buf[0x300];
 __at (ROAD_SCREEN_BUFFER_START) char screen_road_buf[0x800];
 __at (DASH_SCREEN_BUFFER_START) char screen_dash_buf[0x800];
-__at (0x5c36) unsigned int *font_pointer;
+__at (DOUBLE_BUFFER_START) char double_buf[0x800];
 __sfr __at 0xfe joystickKeysPort;
 
 #define ROAD_MARKS_NUM 2
@@ -34,9 +37,8 @@ const road_marks_t road_marks[ROAD_MARKS_NUM] = {
     {.angle = 0, .width = 0, .solid = 0}
 };
 
+static track_element_t *current_track;
 static int shifts[64];
-static char double_buf[0x810];
-static int squares[64];
 static unsigned char scanline;
 static char sprite_buf[48];
 
@@ -51,48 +53,56 @@ void plot(unsigned char x, unsigned char y);
 void render_sprite();
 unsigned int random();
 void cls();
+void go(int new_state);
+void printf(char *s);
 
 int main() {
-  unsigned char i;
+  globals[G_MISSION] = 0;
 
-  globals[G_TRACK_POS] = 0;
-  globals[G_COARSE_POS] = 0;
-  globals[G_SPEED] = 0;
-  globals[G_SPEED] = 0;
-  globals[G_ROAD_ANGLE] = track[globals[G_COARSE_POS]].t;
-  globals[G_MY_ANGLE] = globals[G_ROAD_ANGLE];
-  globals[G_MISPOS] = 0;
-  globals[G_OLD_BG_SHIFT] = 0xff;
-  globals[G_SPRITE_POS] = 0;
-  globals[G_STATE] = ST_IDLE;
-  globals[G_SPRITE_Y] = 0;
-
-  for (i=0;i<64;i++) squares[i] = i*i;
-
-//  render_dashboard();
-
-  cls();
-  printf(msg_intro1);
+  go(ST_INTRO);
 
   while (1) {
-
+    scanline = joystickKeysPort & 0x1f ^ 0x1f;
     switch(globals[G_STATE]) {
-      case ST_IDLE:
+      case ST_INTRO:
+        if (FIRE) go(ST_MIS_INTRO);
+        break;
+      case ST_MIS_INTRO:
+        if (FIRE) go(ST_RACE);
+        break;
+      case ST_RACE_END:
+        if (FIRE) go(ST_MIS_SUCCESS);
+        break;
+      case ST_MIS_SUCCESS:
+        if (FIRE) {
+          globals[G_MISSION]++;
+          if (globals[G_MISSION] >= NUM_MISSIONS) {
+            go(ST_SUCCESS);
+          } else {
+            go(ST_MIS_INTRO);
+          }
+        }
         break;
       case ST_RACE:
-        scanline = joystickKeysPort & 0x0f ^ 0x0f;
-        if (scanline & 0b00000100) globals[G_SPEED]++;
-        if (scanline & 0b00001000) globals[G_SPEED]--;
-        if (scanline & 0b00000010) globals[G_MY_ANGLE]--;
-        if (scanline & 0b00000001) globals[G_MY_ANGLE]++;
+//        if (FIRE) go(ST_RACE_END);
+//        break;
+        if (scanline) {
+          if (BACK) globals[G_SPEED]--;
+          if (FORWARD) globals[G_SPEED]++;
+          if (RIGHT) globals[G_MY_ANGLE]--;
+          if (LEFT) globals[G_MY_ANGLE]++;
+        }
         if (globals[G_SPEED] > MAX_SPEED) globals[G_SPEED] = MAX_SPEED;
         if (globals[G_SPEED] < 0) globals[G_SPEED] = 0;
 
         globals[G_TRACK_POS] += globals[G_SPEED];
         globals[G_COARSE_POS] = globals[G_TRACK_POS] >> 6;
-        if (globals[G_COARSE_POS] >= TRACK_SIZE) globals[G_TRACK_POS] = 0;
-        globals[G_TURN] = track[globals[G_COARSE_POS] + AHEAD].t;
-        globals[G_ROAD_ANGLE] = track[globals[G_COARSE_POS]].t;
+        if (globals[G_COARSE_POS] >= TRACK_SIZE)  {
+          go(ST_RACE_END);
+          break;
+        };
+        globals[G_TURN] = current_track[globals[G_COARSE_POS] + AHEAD].t;
+        globals[G_ROAD_ANGLE] = current_track[globals[G_COARSE_POS]].t;
         globals[G_MISANGLE] = globals[G_MY_ANGLE] - globals[G_ROAD_ANGLE];
         globals[G_MISPOS] += ((globals[G_SPEED] * globals[G_MISANGLE]) >> 2);
 
@@ -134,6 +144,50 @@ int main() {
     }
   }
   return 0;
+}
+
+void go(int new_state) {
+  switch (new_state) {
+    case ST_RACE:
+      current_track = track;
+      globals[G_TRACK_POS] = 0;
+      globals[G_COARSE_POS] = 0;
+      globals[G_SPEED] = 0;
+      globals[G_ROAD_ANGLE] = current_track[globals[G_COARSE_POS]].t;
+      globals[G_MY_ANGLE] = globals[G_ROAD_ANGLE];
+      globals[G_MISPOS] = 0;
+      globals[G_OLD_BG_SHIFT] = 0xff;
+      globals[G_SPRITE_POS] = 0;
+      globals[G_SPRITE_Y] = 0;
+      cls();
+      render_dashboard();
+      break;
+    case ST_INTRO:
+      cls();
+      printf(msg_intro1);
+      printf(msg_press_fire);
+      break;
+    case ST_MIS_INTRO:
+      cls();
+      printf(missions[globals[G_MISSION]].intro);
+      printf(msg_press_fire);
+      break;
+    case ST_RACE_END:
+      cls();
+      printf(msg_mis_task1);
+      printf(msg_press_fire);
+      break;
+    case ST_MIS_SUCCESS:
+      cls();
+      printf(msg_task_success1);
+      printf(msg_press_fire);
+      break;
+    case ST_SUCCESS:
+      cls();
+      printf(msg_success1);
+      break;
+  }
+  globals[G_STATE] = new_state;
 }
 
 void calc_shifts() {
@@ -444,24 +498,31 @@ unsigned int random() {
   __endasm;
 }
 
-void print(int c) {
+void printf(char *s) {
   __asm
-  ld iy, #2
-  add iy, sp
-  ld a, 0(iy)
-  rst #0x10
+  pop hl
+  pop de
+  push de
+  push hl
+print_loop:
+  ld a, (de)
+  cp #0x02
+  ret z
+  cp #0xc0
+  jr nc, print_1251
+  ld hl, #0x3c00
+  ld (0x5c36), hl
+  jr print_putc
+print_1251:
+  ld hl, #_font1 - 0x200
+  ld (0x5c36), hl
+  sub #0x80
+print_putc:
+  halt
+  call #ROM_PRINT
+  inc de
+  jr print_loop
   __endasm;
-}
-
-int putchar(int c) {
-  if (c >= 0xc0) {
-    c -= 0x80;
-    font_pointer = (font1 - 0x200);
-  } else {
-    font_pointer = 0x3c00;
-  }
-  print(c);
-  return c;
 }
 
 void cls() {

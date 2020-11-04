@@ -7,7 +7,8 @@ typedef struct {
     int t;
 } track_element_t;
 
-#define TRACK_SIZE 199
+//#define TRACK_SIZE 199
+#define TRACK_SIZE 1
 #define AHEAD 5
 
 static const track_element_t track[TRACK_SIZE + AHEAD] = {

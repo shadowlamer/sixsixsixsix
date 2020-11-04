@@ -9,8 +9,13 @@
 
 enum {
     ST_IDLE = 0,
+    ST_INTRO,
+    ST_MIS_INTRO,
     ST_RACE,
     ST_CRASH,
+    ST_RACE_END,
+    ST_SUCCESS,
+    ST_MIS_SUCCESS,
     NUM_STATES
 };
 
@@ -32,6 +37,7 @@ enum {
     G_SPRITE_POS,
     G_SEED,
     G_STATE,
+    G_MISSION,
     NUM_GLOBALS
 };
 
@@ -52,23 +58,29 @@ enum {
 #define A_SPRITE_POS   28
 #define A_SEED         30
 #define A_STATE        32
+#define A_MISSION      34
 
 #define NUM_TURNS 19
 #define CENTER_TURN 9
+static const unsigned int squares[64] = {0, 1, 4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144, 169, 196, 225, 256, 289, 324, 361, 400, 441, 484, 529, 576, 625, 676, 729, 784, 841, 900, 961, 1024, 1089, 1156, 1225, 1296, 1369, 1444, 1521, 1600, 1681, 1764, 1849, 1936, 2025, 2116, 2209, 2304, 2401, 2500, 2601, 2704, 2809, 2916, 3025, 3136, 3249, 3364, 3481, 3600, 3721, 3844, 3969};
 static const int turns[NUM_TURNS] = {32, 45, 64, 90, 128, 181, 256, 362, 512, 0, -512, -362, -256, -181, -128, -90, -64, -45, -32};
 
 static int globals[NUM_GLOBALS];
 
 // ROM routines
 #define ROM_OPEN_CHANNEL 0x1601             ; Open a channel
-#define ROM_CLS          0x0DAF
-
+#define ROM_CLOSE        0x16e5             ; Open a channel
+#define ROM_CLS          0x0DAF             ; Clear screen
+#define ROM_PRINT        0x15f2             ; Print a string
 // Control chars
 #define INK     "\x10"
 #define PAPER   "\x11"
+#define FLASH   "\x12\x01"
+#define NOFLASH  "\x12\x00"
 #define OVER    "\x15"
 #define AT      "\x16"
-#define START   "\x01\x01"
+#define START   "\x00\x00"
+#define BOTTOM  "\x14\x00"
 #define BLACK   "\x00"
 #define BLUE    "\x01"
 #define RED     "\x02"
@@ -77,5 +89,13 @@ static int globals[NUM_GLOBALS];
 #define CYAN    "\x05"
 #define YELLOW  "\x06"
 #define WHITE   "\x07"
+#define EOL     "\x02"
+
+
+#define FIRE    (scanline & 0b00010000)
+#define BACK    (scanline & 0b00001000)
+#define FORWARD (scanline & 0b00000100)
+#define RIGHT   (scanline & 0b00000010)
+#define LEFT    (scanline & 0b00000001)
 
 #endif //YRGB2020_GLOBALS_H
