@@ -5,7 +5,7 @@
 #ifndef YRGB2020_GLOBALS_H
 #define YRGB2020_GLOBALS_H
 
-#define MAX_SPEED 12
+#define MAX_SPEED 8
 
 enum {
     ST_IDLE = 0,
@@ -38,6 +38,7 @@ enum {
     G_SEED,
     G_STATE,
     G_MISSION,
+    G_TIMER,
     NUM_GLOBALS
 };
 
@@ -59,6 +60,7 @@ enum {
 #define A_SEED         30
 #define A_STATE        32
 #define A_MISSION      34
+#define A_TIMER        36
 
 #define NUM_TURNS 19
 #define CENTER_TURN 9

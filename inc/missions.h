@@ -8,6 +8,7 @@
 typedef struct {
     char *intro;
     track_element_t *track;
+    char time;
 } mission_t;
 
 #define NUM_MISSIONS 3
@@ -15,15 +16,18 @@ typedef struct {
 const static mission_t missions[NUM_MISSIONS] = {
     {
         .intro = msg_mission1,
-        .track = track
+        .track = track,
+        .time = 60
     },
     {
-        .intro = msg_mission2,
-        .track = track
+        .intro = msg_mission1,
+        .track = track,
+        .time = 60
     },
     {
-        .intro = msg_mission3,
-        .track = track
+        .intro = msg_mission1,
+        .track = track,
+        .time = 60
     }
 };
 

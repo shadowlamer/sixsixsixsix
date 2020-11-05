@@ -55,11 +55,13 @@ unsigned int random();
 void cls();
 void go(int new_state);
 void printf(char *s);
+void print_digit();
+void print_number(char x, char y, int val);
 
 int main() {
   globals[G_MISSION] = 0;
 
-  go(ST_INTRO);
+  go(ST_RACE);
 
   while (1) {
     scanline = joystickKeysPort & 0x1f ^ 0x1f;
@@ -84,19 +86,20 @@ int main() {
         }
         break;
       case ST_RACE:
-//        if (FIRE) go(ST_RACE_END);
-//        break;
         if (scanline) {
           if (BACK) globals[G_SPEED]--;
           if (FORWARD) globals[G_SPEED]++;
-          if (RIGHT) globals[G_MY_ANGLE]--;
-          if (LEFT) globals[G_MY_ANGLE]++;
+          if (RIGHT) globals[G_MY_ANGLE]-=2;
+          if (LEFT) globals[G_MY_ANGLE]+=2;
         }
         if (globals[G_SPEED] > MAX_SPEED) globals[G_SPEED] = MAX_SPEED;
         if (globals[G_SPEED] < 0) globals[G_SPEED] = 0;
 
         globals[G_TRACK_POS] += globals[G_SPEED];
-        globals[G_COARSE_POS] = globals[G_TRACK_POS] >> 6;
+        globals[G_COARSE_POS] = globals[G_TRACK_POS] >> 4;
+
+        render_pos(globals[G_COARSE_POS]);
+
         if (globals[G_COARSE_POS] >= TRACK_SIZE)  {
           go(ST_RACE_END);
           break;
@@ -106,7 +109,6 @@ int main() {
         globals[G_MISANGLE] = globals[G_MY_ANGLE] - globals[G_ROAD_ANGLE];
         globals[G_MISPOS] += ((globals[G_SPEED] * globals[G_MISANGLE]) >> 2);
 
-//    render_pos(globals[G_COARSE_POS]);
         calc_shifts();
 
         globals[G_SPRITE_Y] += globals[G_SPEED];
@@ -133,12 +135,14 @@ int main() {
         }
         render_background();
         render_road();
-//    render_pos(globals[G_COARSE_POS]);
+        print_number(19, 20, globals[G_SPEED]);
+        print_number(19, 21, globals[G_TIMER]);
 
         if (globals[G_MISPOS] > 150 || globals[G_MISPOS] < -150) {
           globals[G_STATE] = ST_CRASH;
           memcpy(screen_buf, bin2c_crash_bin, 0x1800);
         }
+        render_pos(globals[G_COARSE_POS]);
 
         break;
     }
@@ -149,7 +153,8 @@ int main() {
 void go(int new_state) {
   switch (new_state) {
     case ST_RACE:
-      current_track = track;
+      current_track = missions[globals[G_MISSION]].track;
+      globals[G_TIMER] = missions[globals[G_MISSION]].time;
       globals[G_TRACK_POS] = 0;
       globals[G_COARSE_POS] = 0;
       globals[G_SPEED] = 0;
@@ -244,6 +249,9 @@ void render_background(){
   call #__mul16                  ; Multiply speed by turn angle
   ld e, A_BG_SHIFT+0(iy)
   ld d, A_BG_SHIFT+1(iy)
+  ex de, hl
+  add hl, de
+  add hl, de
   add hl, de                     ; Increase global background shift
   ld A_BG_SHIFT+0(iy), l
   ld A_BG_SHIFT+1(iy), h         ; And put it back
@@ -320,7 +328,7 @@ void plot(unsigned char x, unsigned char y) {
   rrca                           ; Move pixel to the right position in byte
   djnz plot_loop
   xor a, (hl)
-      ld (hl), a                     ; Draw pixel
+  ld (hl), a                     ; Draw pixel
   __endasm;
 }
 
@@ -528,5 +536,73 @@ print_putc:
 void cls() {
   __asm
   call #ROM_CLS
+  __endasm;
+}
+
+/**
+ * A - number (0-9)
+ * DE - Screen addr
+ */
+void print_digit() {
+  __asm
+  add a
+  add a
+  add a
+  sbc hl, hl
+  ld l, a
+  ld bc, #0x3d80
+  add hl, bc
+  ld b, #8
+  digit_loop:
+  ld a, (hl)
+  ld (de), a
+  inc d
+  inc hl
+  djnz digit_loop
+  __endasm;
+}
+
+void print_number(char x, char y, int val) {
+  __asm
+
+  ld iy, #2
+  add iy, sp
+
+  ld e, 0(iy)
+  ld d, 1(iy)
+  ld c, 2(iy)
+
+  ld a,d            ; get screen address
+  and #0x7
+  rra
+  rra
+  rra
+  rra
+  or e
+  ld e,a
+  ld a,d
+  and #0x18
+  or #0x40
+  ld d,a
+
+  ld b, #8
+  xor	a
+bcd_loop:            ; bin to bcd
+  sla	c
+  adc	a, a
+  daa
+  djnz	bcd_loop
+  push af
+  push de
+  sra a
+  sra a
+  sra a
+  sra a
+  call #_print_digit
+  pop de
+  pop af
+  and #0x0f
+  inc de
+  call #_print_digit
   __endasm;
 }
