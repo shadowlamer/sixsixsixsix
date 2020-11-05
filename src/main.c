@@ -50,7 +50,7 @@ void render_dashboard();
 void render_map();
 void render_pos(unsigned int pos);
 void plot(unsigned char x, unsigned char y);
-void render_sprite();
+void render_sprite(int x, int y, char *sprite);
 unsigned int random();
 void cls();
 void go(int new_state);
@@ -229,7 +229,7 @@ void render_road() {
       }
     }
   }
-  render_sprite();
+  render_sprite(globals[G_SPRITE_X], globals[G_SPRITE_Y], globals[G_SPRITE_ADDR]);
   memcpy(screen_road_buf, double_buf, 0x800);
 }
 
@@ -343,13 +343,14 @@ void render_map() {
   for (i=0;i<TRACK_SIZE;i++) render_pos(i);
 }
 
-void render_sprite() {
+void render_sprite(int x, int y, char *sprite) {
   __asm
-  push af
-  ld iy, #_globals
+;  push af
+  ld iy, #2
+  add iy, sp
 
-  ld e, A_SPRITE_ADDR+0(iy)
-  ld d, A_SPRITE_ADDR+1(iy)
+  ld e, 4(iy)
+  ld d, 5(iy)
   ld hl, #_sprite_buf           ; Copy from sprite to buffer
 
   ld c, #16
@@ -360,7 +361,7 @@ void render_sprite() {
   xor a
   ld (hl), a                    ; Clean sprite buffer
 
-  ld a, A_SPRITE_X(iy)    ; Load X pos
+  ld a, 0(iy)                   ; Load X pos
   and #0x07                     ; Extract shift part of X pos
   jr nz, ll1
   ld a, (de)
@@ -383,7 +384,7 @@ void render_sprite() {
   xor a
   ld (hl), a                    ; Clean sprite buffer
 
-  ld a, A_SPRITE_X(iy)    ; Load X pos
+  ld a, 0(iy)                   ; Load X pos
   and #0x07                     ; Extract shift part of X pos
   jr nz, ll2
   ld a, (de)
@@ -411,7 +412,7 @@ void render_sprite() {
 
 
   ld a, #64
-  sub A_SPRITE_Y(iy)
+  sub 2(iy)
   jr c, sprite_end
 
   ld c, #0
@@ -423,7 +424,7 @@ void render_sprite() {
 
   ld hl, #_double_buf
 
-  ld a, A_SPRITE_X(iy)
+  ld a, 0(iy)
   srl a
   srl a
   srl a
@@ -431,13 +432,13 @@ void render_sprite() {
   ld l, a
 
   ld a, c
-  add A_SPRITE_Y(iy)
+  add 2(iy)
   and #0x07
   add a, h
   ld h, a
 
   ld a, c
-  add A_SPRITE_Y(iy)
+  add 2(iy)
   add a, a
   add a, a
   and #0xe0
@@ -448,7 +449,7 @@ void render_sprite() {
   adc a, #0
   ld h, a
 
-  ld a, A_SPRITE_X+1(iy)
+  ld a, 1(iy)
   or a
   jr nz, skip1
   ld a, (de)
@@ -458,10 +459,10 @@ void render_sprite() {
   inc hl
   inc de
 
-  ld a, A_SPRITE_X+1(iy)
+  ld a, 1(iy)
   or a
   jr nz, skip2
-  ld a, A_SPRITE_X+0(iy)
+  ld a, 0(iy)
   cp #0xf8
   jr nc, skip2
   ld a, (de)
@@ -471,10 +472,10 @@ void render_sprite() {
   inc hl
   inc de
 
-  ld a, A_SPRITE_X+1(iy)
+  ld a, 1(iy)
   or a
   jr nz, skip3
-  ld a, A_SPRITE_X(iy)
+  ld a, 0(iy)
   cp #0xf0
   jr nc, skip3
   ld a, (de)
@@ -486,7 +487,7 @@ void render_sprite() {
   inc c
   djnz render_sprite_inner_loop
   sprite_end:
-  pop af
+;  pop af
   __endasm;
 }
 
