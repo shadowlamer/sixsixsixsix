@@ -16,6 +16,7 @@ enum {
     ST_RACE_END,
     ST_SUCCESS,
     ST_MIS_SUCCESS,
+    ST_FAIL,
     NUM_STATES
 };
 

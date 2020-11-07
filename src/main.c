@@ -6,18 +6,17 @@
 
 #include "track.h"
 #include "sprites.h"
-#include "crash.h"
 #include "messages.h"
 #include "font1.h"
 
-#define SCREEN_BUFFER_START 0x4000
+#define SCREEN_BUFFER_START      0x4000
 #define ATTR_SCREEN_BUFFER_START 0x5800
 #define ROAD_SCREEN_BUFFER_START 0x4800
 #define DASH_SCREEN_BUFFER_START 0x5000
-#define DOUBLE_BUFFER_START 0x6000
-#define SHIFTS_BUFFER_START 0x6800
-#define SPRITE_BUFFER_START 0x6900
-#define GLOBALS_START 0x6930
+#define DOUBLE_BUFFER_START      0x6000
+#define SHIFTS_BUFFER_START      0x6800
+#define GLOBALS_START            0x6880
+#define SPRITE_BUFFER_START      0x6900
 
 __at (SCREEN_BUFFER_START) char screen_buf[0x1800];
 __at (ATTR_SCREEN_BUFFER_START) char screen_attr_buf[0x300];
@@ -31,8 +30,6 @@ __at (GLOBALS_START) int globals[NUM_GLOBALS];
 
 __sfr __at 0xfe joystickKeysPort;
 
-static int timer;
-
 void render_road();
 void mark(int pos, unsigned char line, unsigned char *pp);
 void calc_shifts();
@@ -45,7 +42,7 @@ void render_sprite(int x, int y, char *sprite);
 unsigned int random();
 void cls();
 void go(int new_state);
-void printf(char *s);
+void printf(char *s, char x, char y);
 void print_digit();
 void print_number(char x, char y, int val);
 
@@ -78,6 +75,9 @@ int main() {
           }
         }
         break;
+      case ST_CRASH:
+        if (FIRE) go(ST_RACE);
+        break;
       case ST_RACE:
         if (BACK) globals[G_SPEED]--;
         if (FORWARD) globals[G_SPEED]++;
@@ -88,10 +88,17 @@ int main() {
 
         globals[G_TRACK_POS] += globals[G_SPEED];
         globals[G_COARSE_POS] = globals[G_TRACK_POS] >> 4;
-        if (globals[G_COARSE_POS] >= globals[G_FINISH])  {
+
+        if (globals[G_COARSE_POS] > TRACK_SIZE) {  // cycle track
+          globals[G_COARSE_POS] = 0;
+          globals[G_TRACK_POS] = 0;
+        }
+
+        if (globals[G_COARSE_POS] >= globals[G_FINISH])  { //end of race
           go(ST_RACE_END);
           break;
         };
+
         globals[G_TURN] = track[globals[G_COARSE_POS] + AHEAD].t;
         globals[G_ROAD_ANGLE] = track[globals[G_COARSE_POS]].t;
         globals[G_MISANGLE] = globals[G_MY_ANGLE] - globals[G_ROAD_ANGLE];
@@ -130,15 +137,18 @@ int main() {
         print_number(3, 19, globals[G_LIVES]);
 
         if (globals[G_MISPOS] > 150 || globals[G_MISPOS] < -150) {
-          globals[G_STATE] = ST_CRASH;
-          memcpy(screen_buf, bin2c_crash_bin, 0x1800);
+          if (globals[G_LIVES] > 1) {
+            go(ST_CRASH);
+          } else {
+            go(ST_FAIL);
+          }
         }
 
-        if (timer == 0) {
-          timer = 10;
+        if (globals[G_TIMER] == 0) {
+          globals[G_TIMER] = 10;
           globals[G_TIME]--;
         } else {
-          timer--;
+          globals[G_TIMER]--;
         }
 
         break;
@@ -159,37 +169,47 @@ void go(int new_state) {
       globals[G_SPRITE_Y] = 0;
       globals[G_TIME] = 60;
       globals[G_FINISH] = globals[G_COARSE_POS] + 50;
-      timer = 0;
+      globals[G_TIMER] = 0;
       cls();
       render_dashboard();
       break;
     case ST_INTRO:
       cls();
-      printf(msg_intro1);
-      printf(msg_press_fire);
+      printf(msg_intro1, 0, 0);
+      printf(msg_press_fire, 0, 23);
       break;
     case ST_MIS_INTRO:
       cls();
       switch (globals[G_MISSION]) {
-        case 0: printf(msg_mission1); break;
-        case 1: printf(msg_mission2); break;
-        case 2: printf(msg_mission3); break;
+        case 0: printf(msg_mission1, 0, 0); break;
+        case 1: printf(msg_mission2, 0, 0); break;
+        case 2: printf(msg_mission3, 0, 0); break;
       }
-      printf(msg_press_fire);
+      printf(msg_press_fire, 0, 23);
       break;
     case ST_RACE_END:
       cls();
-      printf(msg_mis_task1);
-      printf(msg_press_fire);
+      printf(msg_mis_task1, 0, 0);
+      printf(msg_press_fire, 0, 23);
       break;
     case ST_MIS_SUCCESS:
       cls();
-      printf(msg_task_success1);
-      printf(msg_press_fire);
+      printf(msg_task_success1, 0, 0);
+      printf(msg_press_fire, 0, 23);
       break;
     case ST_SUCCESS:
       cls();
-      printf(msg_success1);
+      printf(msg_success1, 0, 0);
+      break;
+    case ST_CRASH:
+      cls();
+      globals[G_LIVES]--;
+      printf(msg_mis_fail1, 0, 0);
+      printf(msg_press_fire, 0, 23);
+      break;
+    case ST_FAIL:
+      cls();
+      printf(msg_fail1, 0, 0);
       break;
   }
   globals[G_STATE] = new_state;
@@ -506,72 +526,17 @@ unsigned int random() {
   __endasm;
 }
 
-void printf(char *s) {
-  __asm
-  pop hl
-  pop de
-  push de
-  push hl
-print_loop:
-  ld a, (de)
-  cp #0x02
-  ret z
-  cp #0xc0
-  jr nc, print_1251
-  ld hl, #0x3c00
-  ld (0x5c36), hl
-  jr print_putc
-print_1251:
-  ld hl, #_font1 - 0x200
-  ld (0x5c36), hl
-  sub #0x80
-print_putc:
-;  halt
-  call #ROM_PRINT
-  inc de
-  jr print_loop
-  __endasm;
-}
-
 void cls() {
-  __asm
-  call #ROM_CLS
-  __endasm;
+  memset(screen_buf, 0x00, 0x1800);
 }
 
 /**
- * A - number (0-9)
- * DE - Screen addr
+ * E - X
+ * D - Y
+ * @return DE - screen address
  */
-void print_digit() {
+void get_char_address() {
   __asm
-  add a
-  add a
-  add a
-  sbc hl, hl
-  ld l, a
-  ld bc, #0x3d80
-  add hl, bc
-  ld b, #8
-  digit_loop:
-  ld a, (hl)
-  ld (de), a
-  inc d
-  inc hl
-  djnz digit_loop
-  __endasm;
-}
-
-void print_number(char x, char y, int val) {
-  __asm
-
-  ld iy, #2
-  add iy, sp
-
-  ld e, 0(iy)
-  ld d, 1(iy)
-  ld c, 2(iy)
-
   ld a,d            ; get screen address
   and #0x7
   rra
@@ -584,6 +549,100 @@ void print_number(char x, char y, int val) {
   and #0x18
   or #0x40
   ld d,a
+  __endasm;
+}
+
+/**
+ * A - char code
+ * DE - screen addr
+ * BC - charset addr
+ */
+void print_char() {
+  __asm
+  sbc hl, hl
+  ld l, a
+  adc hl, hl
+  adc hl, hl
+  adc hl, hl
+  add hl, bc
+  ld b, #8
+print_char_loop:
+  ld a, (hl)
+  ld (de), a
+  inc hl
+  inc d
+  djnz print_char_loop
+  __endasm;
+}
+
+/**
+ * A - number (0-9)
+ * DE - Screen addr
+ */
+void print_digit() {
+  __asm
+  ld bc, #0x3c00
+  add a, #'0'
+  jr #_print_char
+  __endasm;
+}
+
+void printf(char *s, char x, char y) {
+  __asm
+
+  pop af             ; load arguments
+  pop iy
+  pop de
+  push de
+  push iy
+  push af             ; pointer to string in IY here
+
+print_loop:
+  ld a, (iy)          ; load next character
+  cp #0x02            ; check for EOL
+  ret z
+  cp #0xc0            ; check for cp1251 symbol
+  jr nc, print_1251
+  ld bc, #0x3c00      ; load standard charset
+  jr print_putc
+print_1251:
+  ld bc, #_font1 - 0x200 ; load cyrillic charset
+  sub #0x80
+print_putc:            ; charset addr in BC, character in A, pointer to string in IY
+
+  halt                 ; delay
+  push de              ; save coords
+  ld l, a
+  call #_get_char_address  ; taints A
+  ld a, l
+  call #_print_char
+  pop de               ; restore coords
+
+  inc iy              ; next character
+
+  inc e               ; increase X coord
+  ld a, #0x1f         ; check against screen width
+  cp e
+  jr nc, print_loop
+  xor a
+  ld e, a             ; X coord = 0
+  inc d               ; increase Y coord
+  jr print_loop
+  __endasm;
+}
+
+
+void print_number(char x, char y, int val) {
+  __asm
+
+  ld iy, #2
+  add iy, sp
+
+  ld e, 0(iy)
+  ld d, 1(iy)
+  ld c, 2(iy)
+
+  call #_get_char_address
 
   ld b, #8
   xor	a
