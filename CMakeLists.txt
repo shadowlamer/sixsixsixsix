@@ -5,12 +5,12 @@ set(CMAKE_TOOLCHAIN_FILE z80.cmake)
 set(TARGET yrgb2020)
 set(TARGET_VERSION "0.0.1")
 
-set(MAIN_CODE_LOC 26624)
-set(DATA_LOC 62000)
+set(MAIN_CODE_LOC 28000)
+set(DATA_LOC 65000)
 
 project(${TARGET})
 
-set(CMAKE_C_FLAGS "-mz80 --no-std-crt0 --vc --code-loc ${MAIN_CODE_LOC} --data-loc ${DATA_LOC}  --std-sdcc99 --max-allocs-per-node 10000")
+set(CMAKE_C_FLAGS "-mz80 --no-std-crt0 --vc --code-loc ${MAIN_CODE_LOC} --data-loc ${DATA_LOC} --std-sdcc99 --max-allocs-per-node 10000")
 
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR} "src/*.c")
 add_executable( ${TARGET} ${SOURCES})

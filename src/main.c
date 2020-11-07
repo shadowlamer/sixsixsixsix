@@ -3,44 +3,35 @@
 #include "globals.h"
 #include "dashboard.h"
 #include "background1.h"
-//#include "background2.h"
+
 #include "track.h"
 #include "sprites.h"
 #include "crash.h"
 #include "messages.h"
 #include "font1.h"
-#include "missions.h"
 
 #define SCREEN_BUFFER_START 0x4000
 #define ATTR_SCREEN_BUFFER_START 0x5800
 #define ROAD_SCREEN_BUFFER_START 0x4800
 #define DASH_SCREEN_BUFFER_START 0x5000
 #define DOUBLE_BUFFER_START 0x6000
+#define SHIFTS_BUFFER_START 0x6800
+#define SPRITE_BUFFER_START 0x6900
+#define GLOBALS_START 0x6930
 
 __at (SCREEN_BUFFER_START) char screen_buf[0x1800];
 __at (ATTR_SCREEN_BUFFER_START) char screen_attr_buf[0x300];
 __at (ROAD_SCREEN_BUFFER_START) char screen_road_buf[0x800];
 __at (DASH_SCREEN_BUFFER_START) char screen_dash_buf[0x800];
 __at (DOUBLE_BUFFER_START) char double_buf[0x800];
+__at (SHIFTS_BUFFER_START) int shifts[0x80];
+__at (SPRITE_BUFFER_START) char sprite_buf[0x30];
+__at (GLOBALS_START) int globals[NUM_GLOBALS];
+
+
 __sfr __at 0xfe joystickKeysPort;
 
-#define ROAD_MARKS_NUM 2
-
-typedef struct {
-    unsigned char angle;
-    unsigned char width;
-    unsigned char solid;
-} road_marks_t;
-
-const road_marks_t road_marks[ROAD_MARKS_NUM] = {
-    {.angle = 2, .width = 30, .solid = 1},
-    {.angle = 0, .width = 0, .solid = 0}
-};
-
-static track_element_t *current_track;
-static int shifts[64];
-static unsigned char scanline;
-static char sprite_buf[48];
+static int timer;
 
 void render_road();
 void mark(int pos, unsigned char line, unsigned char *pp);
@@ -60,11 +51,13 @@ void print_number(char x, char y, int val);
 
 int main() {
   globals[G_MISSION] = 0;
+  globals[G_COARSE_POS] = 0;
+  globals[G_TRACK_POS] = 0;
+  globals[G_LIVES] = 5;
 
-  go(ST_RACE);
+  go(ST_INTRO);
 
   while (1) {
-    scanline = joystickKeysPort & 0x1f ^ 0x1f;
     switch(globals[G_STATE]) {
       case ST_INTRO:
         if (FIRE) go(ST_MIS_INTRO);
@@ -86,28 +79,25 @@ int main() {
         }
         break;
       case ST_RACE:
-        if (scanline) {
-          if (BACK) globals[G_SPEED]--;
-          if (FORWARD) globals[G_SPEED]++;
-          if (RIGHT) globals[G_MY_ANGLE]-=2;
-          if (LEFT) globals[G_MY_ANGLE]+=2;
-        }
+        if (BACK) globals[G_SPEED]--;
+        if (FORWARD) globals[G_SPEED]++;
+        if (RIGHT) globals[G_MY_ANGLE]-=2;
+        if (LEFT) globals[G_MY_ANGLE]+=2;
         if (globals[G_SPEED] > MAX_SPEED) globals[G_SPEED] = MAX_SPEED;
         if (globals[G_SPEED] < 0) globals[G_SPEED] = 0;
 
         globals[G_TRACK_POS] += globals[G_SPEED];
         globals[G_COARSE_POS] = globals[G_TRACK_POS] >> 4;
-
-        render_pos(globals[G_COARSE_POS]);
-
-        if (globals[G_COARSE_POS] >= TRACK_SIZE)  {
+        if (globals[G_COARSE_POS] >= globals[G_FINISH])  {
           go(ST_RACE_END);
           break;
         };
-        globals[G_TURN] = current_track[globals[G_COARSE_POS] + AHEAD].t;
-        globals[G_ROAD_ANGLE] = current_track[globals[G_COARSE_POS]].t;
+        globals[G_TURN] = track[globals[G_COARSE_POS] + AHEAD].t;
+        globals[G_ROAD_ANGLE] = track[globals[G_COARSE_POS]].t;
         globals[G_MISANGLE] = globals[G_MY_ANGLE] - globals[G_ROAD_ANGLE];
         globals[G_MISPOS] += ((globals[G_SPEED] * globals[G_MISANGLE]) >> 2);
+
+    render_pos(globals[G_COARSE_POS]);
 
         calc_shifts();
 
@@ -135,14 +125,21 @@ int main() {
         }
         render_background();
         render_road();
-        print_number(19, 20, globals[G_SPEED]);
-        print_number(19, 21, globals[G_TIMER]);
+        print_number(3, 17, globals[G_SPEED]);
+        print_number(3, 18, globals[G_TIME]);
+        print_number(3, 19, globals[G_LIVES]);
 
         if (globals[G_MISPOS] > 150 || globals[G_MISPOS] < -150) {
           globals[G_STATE] = ST_CRASH;
           memcpy(screen_buf, bin2c_crash_bin, 0x1800);
         }
-        render_pos(globals[G_COARSE_POS]);
+
+        if (timer == 0) {
+          timer = 10;
+          globals[G_TIME]--;
+        } else {
+          timer--;
+        }
 
         break;
     }
@@ -153,17 +150,16 @@ int main() {
 void go(int new_state) {
   switch (new_state) {
     case ST_RACE:
-      current_track = missions[globals[G_MISSION]].track;
-      globals[G_TIMER] = missions[globals[G_MISSION]].time;
-      globals[G_TRACK_POS] = 0;
-      globals[G_COARSE_POS] = 0;
       globals[G_SPEED] = 0;
-      globals[G_ROAD_ANGLE] = current_track[globals[G_COARSE_POS]].t;
+      globals[G_ROAD_ANGLE] = track[globals[G_COARSE_POS]].t;
       globals[G_MY_ANGLE] = globals[G_ROAD_ANGLE];
       globals[G_MISPOS] = 0;
       globals[G_OLD_BG_SHIFT] = 0xff;
       globals[G_SPRITE_POS] = 0;
       globals[G_SPRITE_Y] = 0;
+      globals[G_TIME] = 60;
+      globals[G_FINISH] = globals[G_COARSE_POS] + 50;
+      timer = 0;
       cls();
       render_dashboard();
       break;
@@ -174,7 +170,11 @@ void go(int new_state) {
       break;
     case ST_MIS_INTRO:
       cls();
-      printf(missions[globals[G_MISSION]].intro);
+      switch (globals[G_MISSION]) {
+        case 0: printf(msg_mission1); break;
+        case 1: printf(msg_mission2); break;
+        case 2: printf(msg_mission3); break;
+      }
       printf(msg_press_fire);
       break;
     case ST_RACE_END:
@@ -320,32 +320,32 @@ void plot(unsigned char x, unsigned char y) {
   ld iy,#2
   add iy,sp                      ; Bypass the return address of the function
   ld c, 0(iy)
-  ld b, 1(iy)
-  call #0x22aa                   ; Pixel addr subroutine
+  ld a, #0xc0
+  sub 1(iy)
+  call #0x22b0                   ; Pixel addr subroutine
   ld b, a
   ld a, #0x80
   plot_loop:
   rrca                           ; Move pixel to the right position in byte
   djnz plot_loop
   xor a, (hl)
-  ld (hl), a                     ; Draw pixel
+      ld (hl), a                     ; Draw pixel
   __endasm;
 }
 
 void render_pos(unsigned int pos) {
   unsigned char x = track[pos].x;
   unsigned char y = track[pos].y;
-  plot(80 + x, 0 + y);
+  plot(80 + x, 8 + y);
 }
 
 void render_map() {
-  unsigned char i;
+  unsigned int i;
   for (i=0;i<TRACK_SIZE;i++) render_pos(i);
 }
 
 void render_sprite(int x, int y, char *sprite) {
   __asm
-;  push af
   ld iy, #2
   add iy, sp
 
@@ -487,7 +487,6 @@ void render_sprite(int x, int y, char *sprite) {
   inc c
   djnz render_sprite_inner_loop
   sprite_end:
-;  pop af
   __endasm;
 }
 
@@ -527,7 +526,7 @@ print_1251:
   ld (0x5c36), hl
   sub #0x80
 print_putc:
-  halt
+;  halt
   call #ROM_PRINT
   inc de
   jr print_loop
