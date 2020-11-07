@@ -167,7 +167,7 @@ void go(int new_state) {
       globals[G_OLD_BG_SHIFT] = 0xff;
       globals[G_SPRITE_POS] = 0;
       globals[G_SPRITE_Y] = 0;
-      globals[G_TIME] = 60;
+      globals[G_TIME] = 99;
       globals[G_FINISH] = globals[G_COARSE_POS] + 50;
       globals[G_TIMER] = 0;
       cls();
@@ -559,14 +559,14 @@ void get_char_address() {
  */
 void print_char() {
   __asm
-  sbc hl, hl
+  sbc hl, hl       ; multiply char code to 8
   ld l, a
   adc hl, hl
   adc hl, hl
   adc hl, hl
-  add hl, bc
+  add hl, bc       ; add charset address
   ld b, #8
-print_char_loop:
+print_char_loop:   ; copy character to screen
   ld a, (hl)
   ld (de), a
   inc hl
@@ -584,6 +584,33 @@ void print_digit() {
   ld bc, #0x3c00
   add a, #'0'
   jr #_print_char
+  __endasm;
+}
+
+void print_number(char x, char y, int val) {
+  __asm
+
+  ld iy, #2               ; load arguments
+  add iy, sp
+  ld e, 0(iy)
+  ld d, 1(iy)
+  call #_get_char_address ; taints A
+  ld a, 2(iy)
+
+  ld bc, #0xff0a
+bcd_loop:                 ; div 10
+  inc b
+  sub c
+  jr nc, bcd_loop
+  add a, c                ; B - first digit, A - last digit
+
+  push de                 ; store coords
+  push bc                 ; store first digit
+  inc e                   ; print last digit first
+  call #_print_digit      ; taints BC and DE
+  pop af                  ; load stored first digit to A
+  pop de
+  jr #_print_digit        ; print first digit
   __endasm;
 }
 
@@ -628,40 +655,5 @@ print_putc:            ; charset addr in BC, character in A, pointer to string i
   ld e, a             ; X coord = 0
   inc d               ; increase Y coord
   jr print_loop
-  __endasm;
-}
-
-
-void print_number(char x, char y, int val) {
-  __asm
-
-  ld iy, #2
-  add iy, sp
-
-  ld e, 0(iy)
-  ld d, 1(iy)
-  ld c, 2(iy)
-
-  call #_get_char_address
-
-  ld b, #8
-  xor	a
-bcd_loop:            ; bin to bcd
-  sla	c
-  adc	a, a
-  daa
-  djnz	bcd_loop
-  push af
-  push de
-  sra a
-  sra a
-  sra a
-  sra a
-  call #_print_digit
-  pop de
-  pop af
-  and #0x0f
-  inc de
-  call #_print_digit
   __endasm;
 }

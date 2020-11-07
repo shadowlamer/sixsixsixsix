@@ -5,7 +5,7 @@ set(CMAKE_TOOLCHAIN_FILE z80.cmake)
 set(TARGET yrgb2020)
 set(TARGET_VERSION "0.0.1")
 
-set(MAIN_CODE_LOC 28000)
+set(MAIN_CODE_LOC 27000)
 set(DATA_LOC 65000)
 
 project(${TARGET})
