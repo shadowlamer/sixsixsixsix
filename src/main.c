@@ -3,6 +3,8 @@
 #include "globals.h"
 #include "dashboard.h"
 #include "background1.h"
+#include "mis_success.h"
+#include "task.h"
 
 #include "track.h"
 #include "sprites.h"
@@ -179,22 +181,24 @@ void go(int new_state) {
       break;
     case ST_MIS_INTRO:
       cls();
+      memcpy(screen_dash_buf, bin2c_task_bin, 0x800);
       switch (globals[G_MISSION]) {
-        case 0: printf(msg_mission1, 0, 0); break;
-        case 1: printf(msg_mission2, 0, 0); break;
-        case 2: printf(msg_mission3, 0, 0); break;
+        case 0: printf(msg_mission1, 0, 3); break;
+        case 1: printf(msg_mission2, 0, 3); break;
+        case 2: printf(msg_mission3, 0, 3); break;
       }
-      printf(msg_press_fire, 0, 23);
+      printf(msg_press_fire, 0, 13);
       break;
     case ST_RACE_END:
       cls();
-      printf(msg_mis_task1, 0, 0);
-      printf(msg_press_fire, 0, 23);
+      printf(msg_mis_task1, 0, 3);
+      printf(msg_press_fire, 0, 14);
       break;
     case ST_MIS_SUCCESS:
       cls();
-      printf(msg_task_success1, 0, 0);
-      printf(msg_press_fire, 0, 23);
+      memcpy(screen_dash_buf, bin2c_mis_success_bin, 0x800);
+      printf(msg_task_success1, 0, 3);
+      printf(msg_press_fire, 0, 14);
       break;
     case ST_SUCCESS:
       cls();
