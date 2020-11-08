@@ -35,10 +35,9 @@ void mark(int pos, unsigned char line, unsigned char *pp);
 void calc_shifts();
 void render_background();
 void render_dashboard();
-void render_map();
-void render_pos(unsigned int pos);
-void plot(unsigned char x, unsigned char y);
-void render_sprite(int x, int y, char *sprite);
+void render_pos();
+void sprite_to_buf(int x, int y, char *sprite);
+void render_buf(int x, int y, char *buf);
 unsigned int random();
 void cls();
 void go(int new_state);
@@ -104,8 +103,6 @@ int main() {
         globals[G_MISANGLE] = globals[G_MY_ANGLE] - globals[G_ROAD_ANGLE];
         globals[G_MISPOS] += ((globals[G_SPEED] * globals[G_MISANGLE]) >> 2);
 
-    render_pos(globals[G_COARSE_POS]);
-
         calc_shifts();
 
         globals[G_SPRITE_Y] += globals[G_SPEED];
@@ -131,7 +128,9 @@ int main() {
           globals[G_SPRITE_POS] = random() % 3;
         }
         render_background();
+        render_pos();
         render_road();
+        render_pos();
         print_number(3, 17, globals[G_SPEED]);
         print_number(3, 18, globals[G_TIME]);
         print_number(3, 19, globals[G_LIVES]);
@@ -249,13 +248,13 @@ void render_road() {
       }
     }
   }
-  render_sprite(globals[G_SPRITE_X], globals[G_SPRITE_Y], globals[G_SPRITE_ADDR]);
+  sprite_to_buf(globals[G_SPRITE_X], globals[G_SPRITE_Y], globals[G_SPRITE_ADDR]);
+  render_buf(globals[G_SPRITE_X], globals[G_SPRITE_Y], double_buf);
   memcpy(screen_road_buf, double_buf, 0x800);
 }
 
 void render_dashboard() {
   memcpy(screen_dash_buf, bin2c_dashboard_bin, 0x800);
-//  render_map();
 }
 
 void render_background(){
@@ -335,36 +334,17 @@ void render_background(){
   __endasm;
 }
 
-void plot(unsigned char x, unsigned char y) {
-  __asm
-  ld iy,#2
-  add iy,sp                      ; Bypass the return address of the function
-  ld c, 0(iy)
-  ld a, #0xc0
-  sub 1(iy)
-  call #0x22b0                   ; Pixel addr subroutine
-  ld b, a
-  ld a, #0x80
-  plot_loop:
-  rrca                           ; Move pixel to the right position in byte
-  djnz plot_loop
-  xor a, (hl)
-      ld (hl), a                     ; Draw pixel
-  __endasm;
+void render_pos() {
+  int pos = globals[G_COARSE_POS];
+  int x = 80 + track[pos].x;
+  int y = 56 - track[pos].y;
+  if (x > 164) x = 164;
+  if (y > 52) y = 52;
+  sprite_to_buf(x, y, sprites[8]);
+  render_buf(x, y, screen_dash_buf);
 }
 
-void render_pos(unsigned int pos) {
-  unsigned char x = track[pos].x;
-  unsigned char y = track[pos].y;
-  plot(80 + x, 8 + y);
-}
-
-void render_map() {
-  unsigned int i;
-  for (i=0;i<TRACK_SIZE;i++) render_pos(i);
-}
-
-void render_sprite(int x, int y, char *sprite) {
+void sprite_to_buf(int x, int y, char *sprite) {
   __asm
   ld iy, #2
   add iy, sp
@@ -427,9 +407,15 @@ void render_sprite(int x, int y, char *sprite) {
 
   dec c
   jr nz, copy_sprite_loop      ; End of loop by lines
+  __endasm;
+}
+
+void render_buf(int x, int y, char *buf) {
+  __asm
+  ld iy, #2
+  add iy, sp
 
   ld de, #_sprite_buf
-
 
   ld a, #64
   sub 2(iy)
@@ -442,7 +428,8 @@ void render_sprite(int x, int y, char *sprite) {
   ld b, a
   render_sprite_inner_loop:
 
-  ld hl, #_double_buf
+  ld l, 4(iy)
+  ld h, 5(iy)
 
   ld a, 0(iy)
   srl a
@@ -473,7 +460,7 @@ void render_sprite(int x, int y, char *sprite) {
   or a
   jr nz, skip1
   ld a, (de)
-  or (hl)
+  xor (hl)
   ld (hl), a
   skip1:
   inc hl
@@ -486,7 +473,7 @@ void render_sprite(int x, int y, char *sprite) {
   cp #0xf8
   jr nc, skip2
   ld a, (de)
-  or (hl)
+  xor (hl)
   ld (hl), a
   skip2:
   inc hl
@@ -499,7 +486,7 @@ void render_sprite(int x, int y, char *sprite) {
   cp #0xf0
   jr nc, skip3
   ld a, (de)
-  or (hl)
+  xor (hl)
   ld (hl), a
   skip3:
   inc de
