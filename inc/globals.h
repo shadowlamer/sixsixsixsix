@@ -6,6 +6,10 @@
 #define YRGB2020_GLOBALS_H
 
 #define MAX_SPEED 8
+#define NUM_MISSIONS 8
+#define MISSION_LENGTH 50
+#define MISSION_TIME 60
+#define FPS 8
 
 enum {
     ST_IDLE = 0,
@@ -14,8 +18,10 @@ enum {
     ST_RACE,
     ST_CRASH,
     ST_RACE_END,
+    ST_QUEST,
     ST_SUCCESS,
     ST_MIS_SUCCESS,
+    ST_MIS_FAIL,
     ST_FAIL,
     NUM_STATES
 };
@@ -105,8 +111,6 @@ static const int turns[NUM_TURNS] = {32, 45, 64, 90, 128, 181, 256, 362, 512, 0,
 #define FORWARD ((joystickKeysPort & 0x1f ^ 0x1f) & 0b00000100)
 #define RIGHT   ((joystickKeysPort & 0x1f ^ 0x1f) & 0b00000010)
 #define LEFT    ((joystickKeysPort & 0x1f ^ 0x1f) & 0b00000001)
-
-#define NUM_MISSIONS 3
 
 #define ROAD_MARKS_NUM 2
 

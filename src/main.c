@@ -1,10 +1,14 @@
 #include <string.h>
 
 #include "globals.h"
+
 #include "dashboard.h"
 #include "background1.h"
 #include "mis_success.h"
+#include "mis_fail.h"
 #include "task.h"
+#include "task_success.h"
+#include "crash.h"
 
 #include "track.h"
 #include "sprites.h"
@@ -64,7 +68,21 @@ int main() {
         if (FIRE) go(ST_RACE);
         break;
       case ST_RACE_END:
-        if (FIRE) go(ST_MIS_SUCCESS);
+        if (FIRE) go(ST_QUEST);
+        break;
+      case ST_QUEST:
+        if (LEFT || RIGHT || FORWARD) {
+          switch (globals[G_MISSION]) {
+            case 0: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 1: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 2: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 3: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 4: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 5: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 6: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 7: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+          }
+        }
         break;
       case ST_MIS_SUCCESS:
         if (FIRE) {
@@ -77,7 +95,12 @@ int main() {
         }
         break;
       case ST_CRASH:
-        if (FIRE) go(ST_RACE);
+        if (globals[G_LIVES] <= 0) go (ST_FAIL);
+        if (FIRE || FIRE) go(ST_RACE);
+        break;
+      case ST_MIS_FAIL:
+        if (globals[G_LIVES] <= 0) go (ST_FAIL);
+        if (FIRE || FIRE) go(ST_QUEST);
         break;
       case ST_RACE:
         if (BACK) globals[G_SPEED]--;
@@ -138,20 +161,16 @@ int main() {
         print_number(3, 19, globals[G_LIVES]);
 
         if (globals[G_MISPOS] > 150 || globals[G_MISPOS] < -150) {
-          if (globals[G_LIVES] > 1) {
             go(ST_CRASH);
-          } else {
-            go(ST_FAIL);
-          }
         }
 
         if (globals[G_TIMER] == 0) {
-          globals[G_TIMER] = 10;
+          globals[G_TIMER] = FPS;
           globals[G_TIME]--;
+          if (globals[G_TIME] <= 0) go(ST_CRASH);
         } else {
           globals[G_TIMER]--;
         }
-
         break;
     }
   }
@@ -168,8 +187,8 @@ void go(int new_state) {
       globals[G_OLD_BG_SHIFT] = 0xff;
       globals[G_SPRITE_POS] = 0;
       globals[G_SPRITE_Y] = 0;
-      globals[G_TIME] = 99;
-      globals[G_FINISH] = globals[G_COARSE_POS] + 50;
+      globals[G_TIME] = MISSION_TIME;
+      globals[G_FINISH] = globals[G_COARSE_POS] + MISSION_LENGTH;
       globals[G_TIMER] = 0;
       cls();
       render_dashboard();
@@ -186,17 +205,36 @@ void go(int new_state) {
         case 0: printf(msg_mission1, 0, 3); break;
         case 1: printf(msg_mission2, 0, 3); break;
         case 2: printf(msg_mission3, 0, 3); break;
+        case 3: printf(msg_mission3, 0, 3); break;
+        case 4: printf(msg_mission3, 0, 3); break;
+        case 5: printf(msg_mission3, 0, 3); break;
+        case 6: printf(msg_mission3, 0, 3); break;
+        case 7: printf(msg_mission3, 0, 3); break;
       }
       printf(msg_press_fire, 0, 13);
       break;
     case ST_RACE_END:
       cls();
+      memcpy(screen_dash_buf, bin2c_mis_success_bin, 0x800);
       printf(msg_mis_task1, 0, 3);
       printf(msg_press_fire, 0, 14);
       break;
+    case ST_QUEST:
+      cls();
+      switch (globals[G_MISSION]) {
+        case 0: printf(msg_quest1, 0, 0); break;
+        case 1: printf(msg_quest1, 0, 0); break;
+        case 2: printf(msg_quest1, 0, 0); break;
+        case 3: printf(msg_quest1, 0, 0); break;
+        case 4: printf(msg_quest1, 0, 0); break;
+        case 5: printf(msg_quest1, 0, 0); break;
+        case 6: printf(msg_quest1, 0, 0); break;
+        case 7: printf(msg_quest1, 0, 0); break;
+      }
+      break;
     case ST_MIS_SUCCESS:
       cls();
-      memcpy(screen_dash_buf, bin2c_mis_success_bin, 0x800);
+      memcpy(screen_dash_buf, bin2c_task_success_bin, 0x800);
       printf(msg_task_success1, 0, 3);
       printf(msg_press_fire, 0, 14);
       break;
@@ -207,8 +245,27 @@ void go(int new_state) {
     case ST_CRASH:
       cls();
       globals[G_LIVES]--;
-      printf(msg_mis_fail1, 0, 0);
-      printf(msg_press_fire, 0, 23);
+      if (globals[G_LIVES] > 0) {
+        memcpy(screen_dash_buf, bin2c_crash_bin, 0x800);
+        printf(msg_mis_fail1, 0, 0);
+        printf(msg_press_fire, 0, 13);
+      }
+      break;
+    case ST_MIS_FAIL:
+      cls();
+      globals[G_LIVES]--;
+      if (globals[G_LIVES] > 0) {
+        memcpy(screen_dash_buf, bin2c_mis_fail_bin, 0x800);
+        printf(msg_task_fail1, 0, 0);
+        switch (globals[G_LIVES]) {
+          case 4: printf(msg_task_fail2, 26, 1); break;
+          case 3: printf(msg_task_fail3, 26, 1); break;
+          case 2: printf(msg_task_fail4, 26, 1); break;
+          case 1: printf(msg_task_fail5, 26, 1); break;
+        }
+        printf(msg_task_fail6, 0, 3);
+        printf(msg_press_fire, 0, 13);
+      }
       break;
     case ST_FAIL:
       cls();
@@ -519,6 +576,7 @@ unsigned int random() {
 
 void cls() {
   memset(screen_buf, 0x00, 0x1800);
+  memset(screen_attr_buf, 0x07, 0x300);
 }
 
 /**
@@ -614,11 +672,15 @@ void printf(char *s, char x, char y) {
   push de
   push iy
   push af             ; pointer to string in IY here
+  dec iy
 
 print_loop:
+  inc iy              ; next character
   ld a, (iy)          ; load next character
   cp #0x02            ; check for EOL
   ret z
+  cp #0x0d            ; carriage return
+  jr z, print_cr
   cp #0xc0            ; check for cp1251 symbol
   jr nc, print_1251
   ld bc, #0x3c00      ; load standard charset
@@ -636,12 +698,11 @@ print_putc:            ; charset addr in BC, character in A, pointer to string i
   call #_print_char
   pop de               ; restore coords
 
-  inc iy              ; next character
-
   inc e               ; increase X coord
   ld a, #0x1f         ; check against screen width
   cp e
   jr nc, print_loop
+print_cr:
   xor a
   ld e, a             ; X coord = 0
   inc d               ; increase Y coord
