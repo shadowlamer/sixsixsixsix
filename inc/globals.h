@@ -7,7 +7,7 @@
 
 #define MAX_SPEED 8
 #define NUM_MISSIONS 8
-#define MISSION_LENGTH 2
+#define MISSION_LENGTH 50
 #define MISSION_TIME 30
 #define FPS 8
 

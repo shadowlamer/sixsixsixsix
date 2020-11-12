@@ -705,7 +705,7 @@ print_1251:
   sub #0x80
 print_putc:            ; charset addr in BC, character in A, pointer to string in IY
 
-;  halt                 ; delay
+  halt                 ; delay
   push de              ; save coords
   ld l, a
   call #_get_char_address  ; taints A
