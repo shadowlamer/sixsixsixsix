@@ -176,7 +176,7 @@ static const char msg_quest5[] =   "Как называется электромонтажный "
                                    "2. Кримпер\n"
                                    "3. Криплер" EOL;
 
-#define RIGHT_ANSWER6 FOUR
+#define RIGHT_ANSWER6 THREE
 static const char msg_quest6[] =   "Для чего используется капча?\n"
                                    "\n"
                                    "1. Чтобы отличить кожаного мешка"
