@@ -9,6 +9,8 @@
 #include "task.h"
 #include "task_success.h"
 #include "crash.h"
+#include "success.h"
+#include "fail.h"
 
 #include "track.h"
 #include "sprites.h"
@@ -73,14 +75,14 @@ int main() {
       case ST_QUEST:
         if (LEFT || RIGHT || FORWARD) {
           switch (globals[G_MISSION]) {
-            case 0: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
-            case 1: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
-            case 2: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
-            case 3: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
-            case 4: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
-            case 5: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
-            case 6: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
-            case 7: if (LEFT) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 0: if (RIGHT_ANSWER1) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 1: if (RIGHT_ANSWER2) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 2: if (RIGHT_ANSWER3) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 3: if (RIGHT_ANSWER4) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 4: if (RIGHT_ANSWER5) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 5: if (RIGHT_ANSWER6) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 6: if (RIGHT_ANSWER7) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 7: if (RIGHT_ANSWER8) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
           }
         }
         break;
@@ -205,11 +207,11 @@ void go(int new_state) {
         case 0: printf(msg_mission1, 0, 3); break;
         case 1: printf(msg_mission2, 0, 3); break;
         case 2: printf(msg_mission3, 0, 3); break;
-        case 3: printf(msg_mission3, 0, 3); break;
-        case 4: printf(msg_mission3, 0, 3); break;
-        case 5: printf(msg_mission3, 0, 3); break;
-        case 6: printf(msg_mission3, 0, 3); break;
-        case 7: printf(msg_mission3, 0, 3); break;
+        case 3: printf(msg_mission4, 0, 3); break;
+        case 4: printf(msg_mission5, 0, 3); break;
+        case 5: printf(msg_mission6, 0, 3); break;
+        case 6: printf(msg_mission7, 0, 3); break;
+        case 7: printf(msg_mission8, 0, 3); break;
       }
       printf(msg_press_fire, 0, 13);
       break;
@@ -223,13 +225,13 @@ void go(int new_state) {
       cls();
       switch (globals[G_MISSION]) {
         case 0: printf(msg_quest1, 0, 0); break;
-        case 1: printf(msg_quest1, 0, 0); break;
-        case 2: printf(msg_quest1, 0, 0); break;
-        case 3: printf(msg_quest1, 0, 0); break;
-        case 4: printf(msg_quest1, 0, 0); break;
-        case 5: printf(msg_quest1, 0, 0); break;
-        case 6: printf(msg_quest1, 0, 0); break;
-        case 7: printf(msg_quest1, 0, 0); break;
+        case 1: printf(msg_quest2, 0, 0); break;
+        case 2: printf(msg_quest3, 0, 0); break;
+        case 3: printf(msg_quest4, 0, 0); break;
+        case 4: printf(msg_quest5, 0, 0); break;
+        case 5: printf(msg_quest6, 0, 0); break;
+        case 6: printf(msg_quest7, 0, 0); break;
+        case 7: printf(msg_quest8, 0, 0); break;
       }
       break;
     case ST_MIS_SUCCESS:
@@ -240,6 +242,7 @@ void go(int new_state) {
       break;
     case ST_SUCCESS:
       cls();
+      memcpy(screen_dash_buf, bin2c_success_bin, 0x800);
       printf(msg_success1, 0, 0);
       break;
     case ST_CRASH:
@@ -269,6 +272,7 @@ void go(int new_state) {
       break;
     case ST_FAIL:
       cls();
+      memcpy(screen_dash_buf, bin2c_fail_bin, 0x800);
       printf(msg_fail1, 0, 0);
       break;
   }
@@ -679,7 +683,7 @@ print_loop:
   ld a, (iy)          ; load next character
   cp #0x02            ; check for EOL
   ret z
-  cp #0x0d            ; carriage return
+  cp #0x0a            ; carriage return
   jr z, print_cr
   cp #0xc0            ; check for cp1251 symbol
   jr nc, print_1251
