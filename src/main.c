@@ -82,7 +82,7 @@ int main() {
             case 4: if (RIGHT_ANSWER5) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
             case 5: if (RIGHT_ANSWER6) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
             case 6: if (RIGHT_ANSWER7) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
-            case 7: if (RIGHT_ANSWER8) go (ST_MIS_SUCCESS); else go (ST_MIS_FAIL); break;
+            case 7: if (RIGHT_ANSWER8) go (ST_SUCCESS); else go (ST_MIS_FAIL); break;
           }
         }
         break;
@@ -213,6 +213,10 @@ void go(int new_state) {
         case 6: printf(msg_mission7, 0, 3); break;
         case 7: printf(msg_mission8, 0, 3); break;
       }
+      printf ("1-влево" EOL, 23, 18);
+      printf ("2-вправо" EOL, 23, 19);
+      printf ("3-вперед" EOL, 23, 20);
+      printf ("4-тормоз" EOL, 23, 21);
       printf(msg_press_fire, 0, 13);
       break;
     case ST_RACE_END:
