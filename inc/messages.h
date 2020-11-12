@@ -48,9 +48,11 @@ static const char msg_mis_fail1[] =     "Ответственность и огромная важ- "
                                         "чи слишком тяжелым грузом и ты  "
                                         "не справился с управлением вело-"
                                         "сипедом. Но битва за Сеть еще   "
-                                        "продолжается. Ты готов подняться"
-                                        "и продолжить твой путь, чтобы   "
-                                        "остановить силы тьмы?" EOL;
+                                        "продолжается. " EOL;
+
+static const char msg_mis_fail2[] =     "Ты готов подняться и продолжить "
+                                        "твой путь, чтобы остановить силы"
+                                        "тьмы?" EOL;
 
 static const char msg_mis_task1[] =     "Ты успешно добрался до места!   "
                                         "Выслушав рассказ клиента и про- "
@@ -61,11 +63,11 @@ static const char msg_mis_task1[] =     "Ты успешно добрался до места!   "
                                         "задачку." EOL;
 
 static const char msg_task_fail1[] =    "Хорошая попытка! Но лучше бы ты "
-                                        "ответил правильно. У тебя" EOL;
-static const char msg_task_fail2[] =    "оста- лось четыре попытки." EOL;
-static const char msg_task_fail3[] =    "оста- лось еще три попытки." EOL;
-static const char msg_task_fail4[] =    "оста- лось еще две попытки." EOL;
-static const char msg_task_fail5[] =    "оста- лась последняя попытка." EOL;
+                                        "ответил правильно." EOL;
+static const char msg_task_fail2[] =    "У тебя осталось четыре попытки." EOL;
+static const char msg_task_fail3[] =    "У тебя осталось еще три попытки." EOL;
+static const char msg_task_fail4[] =    "У тебя осталось еще две попытки." EOL;
+static const char msg_task_fail5[] =    "У тебя последняя попытка." EOL;
 static const char msg_task_fail6[] =    "Попробуешь еще раз?" EOL;
 
 //                                      |                                |
@@ -159,7 +161,7 @@ static const char msg_quest3[] =   "Кто пишет правила для Сети?\n"
                                    "2. Сами знаете кто\n"
                                    "3. Твоя мамка" EOL;
 
-#define RIGHT_ANSWER4 THREE
+#define RIGHT_ANSWER4 TWO
 static const char msg_quest4[] =   "Зачем люди пользуются\n"
                                    "Интернетом?\n"
                                    "\n"
@@ -170,7 +172,8 @@ static const char msg_quest4[] =   "Зачем люди пользуются\n"
 
 #define RIGHT_ANSWER5 TWO
 static const char msg_quest5[] =   "Как правильно называется "
-                                   "электромонтажный ручной инструмент?\n"
+                                   "электромонтажный ручной инстру- "
+                                   "мент?\n"
                                    "\n"
                                    "1. Скриммер в ночи\n"
                                    "2. Кримпер тьмы\n"
@@ -182,12 +185,14 @@ static const char msg_quest6[] =   "Зачем используется капча?\n"
                                    "1. Чтобы боксеру не выбили зубы\n"
                                    "2. Чтобы пересчитать все пожар- "
                                    "   ные гидранты в Калифорнии\n"
-                                   "3. Как преграда для порождений тьмы" EOL;
+                                   "3. Как преграда для порождений  "
+                                   "   тьмы" EOL;
 
 #define RIGHT_ANSWER7 ONE
 static const char msg_quest7[] =   "Что такое рунет?\n"
                                    "\n"
-                                   "1. Русскоязычный отряд защиты Сети\n"
+                                   "1. Русскоязычный отряд защиты   "
+                                   "   Сети\n"
                                    "2. Сладкое блюдо из Скайрима\n"
                                    "3. Древняя система письма, ис-  "
                                    "   пользуется гномами" EOL;

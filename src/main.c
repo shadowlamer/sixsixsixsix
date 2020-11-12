@@ -215,8 +215,8 @@ void go(int new_state) {
       }
       printf ("1-влево" EOL, 23, 18);
       printf ("2-вправо" EOL, 23, 19);
-      printf ("3-вперед" EOL, 23, 20);
-      printf ("4-тормоз" EOL, 23, 21);
+      printf ("3-гони!" EOL, 23, 20);
+      printf ("4-стой!" EOL, 23, 21);
       printf(msg_press_fire, 0, 13);
       break;
     case ST_RACE_END:
@@ -255,6 +255,13 @@ void go(int new_state) {
       if (globals[G_LIVES] > 0) {
         memcpy(screen_dash_buf, bin2c_crash_bin, 0x800);
         printf(msg_mis_fail1, 0, 0);
+        switch (globals[G_LIVES]) {
+          case 4: printf(msg_task_fail2, 0, 6); break;
+          case 3: printf(msg_task_fail3, 0, 6); break;
+          case 2: printf(msg_task_fail4, 0, 6); break;
+          case 1: printf(msg_task_fail5, 0, 6); break;
+        }
+        printf(msg_mis_fail2, 0, 7);
         printf(msg_press_fire, 0, 13);
       }
       break;
@@ -265,10 +272,10 @@ void go(int new_state) {
         memcpy(screen_dash_buf, bin2c_mis_fail_bin, 0x800);
         printf(msg_task_fail1, 0, 0);
         switch (globals[G_LIVES]) {
-          case 4: printf(msg_task_fail2, 26, 1); break;
-          case 3: printf(msg_task_fail3, 26, 1); break;
-          case 2: printf(msg_task_fail4, 26, 1); break;
-          case 1: printf(msg_task_fail5, 26, 1); break;
+          case 4: printf(msg_task_fail2, 0, 2); break;
+          case 3: printf(msg_task_fail3, 0, 2); break;
+          case 2: printf(msg_task_fail4, 0, 2); break;
+          case 1: printf(msg_task_fail5, 0, 2); break;
         }
         printf(msg_task_fail6, 0, 3);
         printf(msg_press_fire, 0, 13);
