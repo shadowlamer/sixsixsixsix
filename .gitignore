@@ -1,3 +1,5 @@
 build
 .idea
 cmake-build-*
+node_modules
+

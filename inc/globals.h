@@ -7,8 +7,8 @@
 
 #define MAX_SPEED 8
 #define NUM_MISSIONS 8
-#define MISSION_LENGTH 50
-#define MISSION_TIME 30
+#define MISSION_LENGTH 83
+#define MISSION_TIME 60
 #define FPS 8
 
 enum {
@@ -79,7 +79,6 @@ enum {
 #define CENTER_TURN 9
 static const int squares[64] = {0, 1, 4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144, 169, 196, 225, 256, 289, 324, 361, 400, 441, 484, 529, 576, 625, 676, 729, 784, 841, 900, 961, 1024, 1089, 1156, 1225, 1296, 1369, 1444, 1521, 1600, 1681, 1764, 1849, 1936, 2025, 2116, 2209, 2304, 2401, 2500, 2601, 2704, 2809, 2916, 3025, 3136, 3249, 3364, 3481, 3600, 3721, 3844, 3969};
 static const int turns[NUM_TURNS] = {32, 45, 64, 90, 128, 181, 256, 362, 512, 0, -512, -362, -256, -181, -128, -90, -64, -45, -32};
-
 
 // ROM routines
 #define ROM_OPEN_CHANNEL 0x1601             ; Open a channel

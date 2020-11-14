@@ -12,8 +12,9 @@
 #include "success.h"
 #include "fail.h"
 
-#include "track.h"
+#include "tracks.h"
 #include "sprites.h"
+#include "mapsprites.h"
 #include "messages.h"
 #include "font1.h"
 
@@ -25,6 +26,7 @@
 #define SHIFTS_BUFFER_START      0x6800
 #define GLOBALS_START            0x6880
 #define SPRITE_BUFFER_START      0x6900
+#define TRACK_BUFFER_START       0x6930
 
 __at (SCREEN_BUFFER_START) char screen_buf[0x1800];
 __at (ATTR_SCREEN_BUFFER_START) char screen_attr_buf[0x300];
@@ -32,8 +34,9 @@ __at (ROAD_SCREEN_BUFFER_START) char screen_road_buf[0x800];
 __at (DASH_SCREEN_BUFFER_START) char screen_dash_buf[0x800];
 __at (DOUBLE_BUFFER_START) char double_buf[0x800];
 __at (SHIFTS_BUFFER_START) int shifts[0x80];
-__at (SPRITE_BUFFER_START) char sprite_buf[0x30];
 __at (GLOBALS_START) int globals[NUM_GLOBALS];
+__at (SPRITE_BUFFER_START) char sprite_buf[0x30];
+__at (TRACK_BUFFER_START) track_element_t track[200];
 
 
 __sfr __at 0xfe joystickKeysPort;
@@ -52,6 +55,7 @@ void go(int new_state);
 void printf(char *s, char x, char y);
 void print_digit();
 void print_number(char x, char y, int val);
+void render_map(char *map);
 
 int main() {
   globals[G_MISSION] = 0;
@@ -115,7 +119,7 @@ int main() {
         globals[G_TRACK_POS] += globals[G_SPEED];
         globals[G_COARSE_POS] = globals[G_TRACK_POS] >> 4;
 
-        if (globals[G_COARSE_POS] > TRACK_SIZE) {  // cycle track
+        if (globals[G_COARSE_POS] > globals[G_FINISH]) {  // cycle track
           globals[G_COARSE_POS] = 0;
           globals[G_TRACK_POS] = 0;
         }
@@ -125,7 +129,7 @@ int main() {
           break;
         };
 
-        globals[G_TURN] = track[globals[G_COARSE_POS] + AHEAD].t;
+        globals[G_TURN] = track[globals[G_COARSE_POS]].t;
         globals[G_ROAD_ANGLE] = track[globals[G_COARSE_POS]].t;
         globals[G_MISANGLE] = globals[G_MY_ANGLE] - globals[G_ROAD_ANGLE];
         globals[G_MISPOS] += ((globals[G_SPEED] * globals[G_MISANGLE]) >> 2);
@@ -183,6 +187,8 @@ void go(int new_state) {
   switch (new_state) {
     case ST_RACE:
       globals[G_SPEED] = 0;
+      globals[G_COARSE_POS] = 0;
+      globals[G_TRACK_POS] = 0;
       globals[G_ROAD_ANGLE] = track[globals[G_COARSE_POS]].t;
       globals[G_MY_ANGLE] = globals[G_ROAD_ANGLE];
       globals[G_MISPOS] = 0;
@@ -190,10 +196,51 @@ void go(int new_state) {
       globals[G_SPRITE_POS] = 0;
       globals[G_SPRITE_Y] = 0;
       globals[G_TIME] = MISSION_TIME;
-      globals[G_FINISH] = globals[G_COARSE_POS] + MISSION_LENGTH;
       globals[G_TIMER] = 0;
       cls();
       render_dashboard();
+      switch (globals[G_MISSION]) {
+        case 0:
+          globals[G_FINISH] = TRACK1_SIZE;
+          memcpy(track, track1, TRACK1_SIZE * sizeof(track_element_t));
+          render_map(map_sprites[0]);
+          break;
+        case 1:
+          globals[G_FINISH] = TRACK2_SIZE;
+          memcpy(track, track2, TRACK2_SIZE * sizeof(track_element_t));
+          render_map(map_sprites[1]);
+          break;
+        case 2:
+          globals[G_FINISH] = TRACK3_SIZE;
+          memcpy(track, track3, TRACK3_SIZE * sizeof(track_element_t));
+          render_map(map_sprites[2]);
+          break;
+        case 3:
+          globals[G_FINISH] = TRACK4_SIZE;
+          memcpy(track, track4, TRACK4_SIZE * sizeof(track_element_t));
+          render_map(map_sprites[3]);
+          break;
+        case 4:
+          globals[G_FINISH] = TRACK5_SIZE;
+          memcpy(track, track5, TRACK5_SIZE * sizeof(track_element_t));
+          render_map(map_sprites[4]);
+          break;
+        case 5:
+          globals[G_FINISH] = TRACK6_SIZE;
+          memcpy(track, track6, TRACK6_SIZE * sizeof(track_element_t));
+          render_map(map_sprites[5]);
+          break;
+        case 6:
+          globals[G_FINISH] = TRACK7_SIZE;
+          memcpy(track, track7, TRACK7_SIZE * sizeof(track_element_t));
+          render_map(map_sprites[6]);
+          break;
+        case 7:
+          globals[G_FINISH] = TRACK8_SIZE;
+          memcpy(track, track8, TRACK8_SIZE * sizeof(track_element_t));
+          render_map(map_sprites[7]);
+          break;
+      }
       break;
     case ST_INTRO:
       cls();
@@ -413,7 +460,7 @@ void render_background(){
 void render_pos() {
   int pos = globals[G_COARSE_POS];
   int x = 80 + track[pos].x;
-  int y = 56 - track[pos].y;
+  int y = 55 - track[pos].y;
   if (x > 164) x = 164;
   if (y > 52) y = 52;
   sprite_to_buf(x, y, sprites[8]);
@@ -705,7 +752,7 @@ print_1251:
   sub #0x80
 print_putc:            ; charset addr in BC, character in A, pointer to string in IY
 
-  halt                 ; delay
+;  halt                 ; delay
   push de              ; save coords
   ld l, a
   call #_get_char_address  ; taints A
@@ -722,5 +769,41 @@ print_cr:
   ld e, a             ; X coord = 0
   inc d               ; increase Y coord
   jr print_loop
+  __endasm;
+}
+
+void render_map(char *map) {
+  __asm
+  pop af
+  pop hl
+  push hl
+  push af
+
+  ld b, #0x30
+  ld de, #0x502a
+map_loop:
+  push bc
+  ld bc, #0x0b
+  ldir
+  pop bc
+  inc d
+
+  ld a, #0xe0
+  and e
+  add #0x0a
+  ld e, a
+
+  ld a, #0x07
+  and d
+  jr nz, map_line
+  push hl
+  ex de, hl
+  ld de, #0x07e0
+  sbc hl, de
+  ex de, hl
+  pop hl
+
+map_line:
+  djnz map_loop
   __endasm;
 }
