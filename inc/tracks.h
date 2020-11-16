@@ -20,4 +20,13 @@ typedef struct {
 #include "track7.h"
 #include "track8.h"
 
+#define TRACK1_TIME 90
+#define TRACK2_TIME 90
+#define TRACK3_TIME 90
+#define TRACK4_TIME 90
+#define TRACK5_TIME 90
+#define TRACK6_TIME 90
+#define TRACK7_TIME 90
+#define TRACK8_TIME 90
+
 #endif //YRGB2020_TRACKS_H
