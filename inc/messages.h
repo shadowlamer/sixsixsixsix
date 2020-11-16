@@ -97,7 +97,8 @@ static const char msg_mission1[] = "Эй, новенький!\n"
                                    "Зеленая, 66, кв. 6!\n"
                                    "Клиент жалуется на скорость,    "
                                    "соцсети не грузятся, проверь,   "
-                                   "что там!" EOL;
+                                   "что там!\n"
+                                   "Избегай луж на дороге!" EOL;
 
 static const char msg_mission2[] = "Новенький, для тебя задание!    "
                                    "Житель коттеджного поселка жалу-"
@@ -206,6 +207,6 @@ static const char msg_quest8[] =   "Какой IP адрес используется ком-"
                                    "2. 127.0.0.1\n"
                                    "3. П.М.М.Л." EOL;
 
-static const char msg_press_fire[] =    "Нажми \"Fire\"..." EOL;
+static const char msg_press_fire[] =    "Нажми Fire или 5..." EOL;
 
 #endif //YRGB2020_MESSAGES_H

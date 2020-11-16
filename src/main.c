@@ -195,47 +195,54 @@ void go(int new_state) {
       globals[G_OLD_BG_SHIFT] = 0xff;
       globals[G_SPRITE_POS] = 0;
       globals[G_SPRITE_Y] = 0;
-      globals[G_TIME] = MISSION_TIME;
       globals[G_TIMER] = 0;
       cls();
       render_dashboard();
       switch (globals[G_MISSION]) {
         case 0:
+          globals[G_TIME] = TRACK1_TIME;
           globals[G_FINISH] = TRACK1_SIZE;
           memcpy(track, track1, TRACK1_SIZE * sizeof(track_element_t));
           render_map(map_sprites[0]);
           break;
         case 1:
+          globals[G_TIME] = TRACK2_TIME;
           globals[G_FINISH] = TRACK2_SIZE;
           memcpy(track, track2, TRACK2_SIZE * sizeof(track_element_t));
           render_map(map_sprites[1]);
           break;
         case 2:
+          globals[G_TIME] = TRACK3_TIME;
           globals[G_FINISH] = TRACK3_SIZE;
           memcpy(track, track3, TRACK3_SIZE * sizeof(track_element_t));
           render_map(map_sprites[2]);
           break;
         case 3:
+          globals[G_TIME] = TRACK4_TIME;
           globals[G_FINISH] = TRACK4_SIZE;
           memcpy(track, track4, TRACK4_SIZE * sizeof(track_element_t));
           render_map(map_sprites[3]);
           break;
         case 4:
+          globals[G_TIME] = TRACK5_TIME;
           globals[G_FINISH] = TRACK5_SIZE;
           memcpy(track, track5, TRACK5_SIZE * sizeof(track_element_t));
           render_map(map_sprites[4]);
           break;
         case 5:
+          globals[G_TIME] = TRACK6_TIME;
           globals[G_FINISH] = TRACK6_SIZE;
           memcpy(track, track6, TRACK6_SIZE * sizeof(track_element_t));
           render_map(map_sprites[5]);
           break;
         case 6:
+          globals[G_TIME] = TRACK7_TIME;
           globals[G_FINISH] = TRACK7_SIZE;
           memcpy(track, track7, TRACK7_SIZE * sizeof(track_element_t));
           render_map(map_sprites[6]);
           break;
         case 7:
+          globals[G_TIME] = TRACK8_TIME;
           globals[G_FINISH] = TRACK8_SIZE;
           memcpy(track, track8, TRACK8_SIZE * sizeof(track_element_t));
           render_map(map_sprites[7]);
@@ -752,7 +759,7 @@ print_1251:
   sub #0x80
 print_putc:            ; charset addr in BC, character in A, pointer to string in IY
 
-;  halt                 ; delay
+  halt                 ; delay
   push de              ; save coords
   ld l, a
   call #_get_char_address  ; taints A
