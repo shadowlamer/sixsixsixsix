@@ -310,12 +310,12 @@ void go(int new_state) {
         memcpy(screen_dash_buf, bin2c_crash_bin, 0x800);
         printf(msg_mis_fail1, 0, 0);
         switch (globals[G_LIVES]) {
-          case 4: printf(msg_task_fail2, 0, 6); break;
-          case 3: printf(msg_task_fail3, 0, 6); break;
-          case 2: printf(msg_task_fail4, 0, 6); break;
-          case 1: printf(msg_task_fail5, 0, 6); break;
+          case 4: printf(msg_task_fail2, 0, 7); break;
+          case 3: printf(msg_task_fail3, 0, 7); break;
+          case 2: printf(msg_task_fail4, 0, 7); break;
+          case 1: printf(msg_task_fail5, 0, 7); break;
         }
-        printf(msg_mis_fail2, 0, 7);
+        printf(msg_mis_fail2, 0, 8);
         printf(msg_press_fire, 0, 13);
       }
       break;
@@ -326,12 +326,12 @@ void go(int new_state) {
         memcpy(screen_dash_buf, bin2c_mis_fail_bin, 0x800);
         printf(msg_task_fail1, 0, 0);
         switch (globals[G_LIVES]) {
-          case 4: printf(msg_task_fail2, 0, 2); break;
-          case 3: printf(msg_task_fail3, 0, 2); break;
-          case 2: printf(msg_task_fail4, 0, 2); break;
-          case 1: printf(msg_task_fail5, 0, 2); break;
+          case 4: printf(msg_task_fail2, 0, 3); break;
+          case 3: printf(msg_task_fail3, 0, 3); break;
+          case 2: printf(msg_task_fail4, 0, 3); break;
+          case 1: printf(msg_task_fail5, 0, 3); break;
         }
-        printf(msg_task_fail6, 0, 3);
+        printf(msg_task_fail6, 0, 4);
         printf(msg_press_fire, 0, 13);
       }
       break;

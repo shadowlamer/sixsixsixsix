@@ -10,7 +10,7 @@ set(DATA_LOC 65000)
 
 project(${TARGET})
 
-set(CMAKE_C_FLAGS "-mz80 --no-std-crt0 --vc --code-loc ${MAIN_CODE_LOC} --data-loc ${DATA_LOC} --std-sdcc99 --max-allocs-per-node 10000")
+set(CMAKE_C_FLAGS "-mz80 --no-std-crt0 --vc --code-loc ${MAIN_CODE_LOC} --data-loc ${DATA_LOC} --std-sdcc99 --max-allocs-per-node 1000000")
 
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR} "src/*.c")
 add_executable( ${TARGET} ${SOURCES})
