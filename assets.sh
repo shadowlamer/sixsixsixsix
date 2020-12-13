@@ -15,6 +15,10 @@ success
 fail
 "
 
+# Install dependencies
+[ -d tools/track_converter/node_modules ] || npm --prefix tools/track_converter install
+[ -d tools/sprites_extractor/node_modules ] || npm --prefix tools/sprites_extractor install
+
 # Process images
 for IMG in $IMAGES; do
   dd if=assets/${IMG}.scr of=assets/${IMG}.bin bs=2048 count=1
