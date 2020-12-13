@@ -1,5 +1,7 @@
 build
 .idea
 cmake-build-*
+build*
 node_modules
 
+sixsixsix.tap
