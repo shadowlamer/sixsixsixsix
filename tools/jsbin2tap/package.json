@@ -1,0 +1,25 @@
+{
+  "name": "jsbin2tap",
+  "version": "0.0.2",
+  "description": "Adds binary data to ZX Spectrum tape files",
+  "repository" : {
+    "type" : "git",
+    "url" : "https://github.com/shadowlamer/jsbin2tap.git"
+  },
+  "main": "./lib/tape.js",
+  "bin": "./bin/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node bin/index.js"
+  },
+  "preferGlobal": true,
+  "keywords": ["bin2tap", "ZX Spectrum"],
+  "author": {
+    "name": "Vadim Cherenev",
+    "email": "sl@anhot.ru"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "minimist": "^1.2.5"
+  }
+}
