@@ -23,8 +23,8 @@ for IMG in $IMAGES; do
 done
 
 # Process tracks
-track_converter assets/track?.svg -d inc -p __YRGB2020
+npm --prefix tools/track_converter start -- ${PWD}/assets/track?.svg -d ${PWD}/inc -p __YRGB2020
 
 # Process sprites
-sprites_extractor -n sprites -p __YRGB2020 -w 2 -h 16 -o inc/sprites.h assets/sprites.scr
-sprites_extractor -n map_sprites -p __YRGB2020 -w 11 -h 48 -o inc/mapsprites.h assets/mapsprites1.scr assets/mapsprites2.scr
+npm --prefix tools/sprites_extractor start -- -n sprites -p __YRGB2020 -w 2 -h 16 -o ${PWD}/inc/sprites.h ${PWD}/assets/sprites.scr
+npm --prefix tools/sprites_extractor start -- -n map_sprites -p __YRGB2020 -w 11 -h 48 -o ${PWD}/inc/mapsprites.h ${PWD}/assets/mapsprites1.scr ${PWD}/assets/mapsprites2.scr
