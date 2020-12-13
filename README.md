@@ -70,3 +70,55 @@ In a project root directory:
 ```
 ./emulate.sh
 ```
+
+## Tools
+
+There are some useful tools in tools directory. These tools are used to compile assets to C headers
+and are called by assets.sh.
+
+### Sprites extractor
+
+Sprites are extracted from .scr files to C header files. Extractor can extract sprites from 
+several files. Empty sprites are ignored.
+
+Usage: 
+```
+sprites_extractor [options] file.scr [file2.scr ...]
+```
+
+Options:
+
+| Short | Long      | Description             | Default   |
+|-------|-----------|-------------------------|-----------|
+|-o     | --outfile | out file                | sprites.h |
+|-n     | --name    | array name              | sprites   |
+|-p     | --prefix  | guard prefix            | _         |
+|-w     | --width   | sprite width in bytes   | 2         |
+|-h     | --height  | sprite height in bytes  | 16        |
+|-?     | --help    | print usage information | false     |
+
+
+### Tracks converter
+
+Track data are extracted from .svg files. Just create simple .svg with one <path>, 
+give a path name and run converter.
+
+Usage: 
+
+```
+track_converter [options] file.svg [file2.svg ...]
+```
+Options:
+
+| Short | Long        | Description             | Default   |
+|-------|-------------|-------------------------|-----------|
+|-d     | --directory | Output directory        | .         |
+|-p     | --prefix    | Guard prefix            | __TRACK   |
+|-h     | --help      | print usage information | false     |
+
+
+### Tape composer
+
+This tool actually has own [repo](https://github.com/shadowlamer/jsbin2tap) 
+and npm [package](https://www.npmjs.com/package/jsbin2tap)
+
